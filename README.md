@@ -1,0 +1,74 @@
+# Claude Review
+
+Batch diff review for [Claude Code](https://code.claude.com), inspired by the review workflow in editors like Antigravity and Windsurf.
+
+## Table of contents
+
+- [The problem](#the-problem)
+- [What this does](#what-this-does)
+- [Installation](#installation)
+- [Usage](#usage)
+- [How it works](#how-it-works)
+- [Feedback](#feedback)
+- [License](#license)
+
+## The problem
+
+Claude Code has several [permission modes](https://code.claude.com/docs/en/permission-modes) that control how much it asks before editing files. Two of them cover most day-to-day use:
+
+- **Default mode** asks for approval before every single file edit. You review changes one at a time, with no visibility into what's coming next, and rejecting one edit stops the whole task rather than just skipping that change.
+- **Accept edits mode** (`acceptEdits` in settings, shown as "Edit automatically" in some interfaces) lets Claude edit freely without asking. Anthropic's own documentation recommends this mode specifically for people who intend to review the results afterward, using their editor or `git diff`, instead of approving each edit as it happens.
+
+That second half, reviewing everything after the fact, is where the built-in tooling stops. `git diff` gives you the raw text of every change with no way to act on it beyond reading. If you want to keep some edits and discard others, you're manually editing the diff output yourself or hoping you remember to check.
+
+This tool fills that gap. It gives `acceptEdits` mode a proper review interface: every change Claude made, organized by file and hunk, with the ability to accept or reject anything down to a single line.
+
+## What this does
+
+Claude edits freely for the whole task, with no prompts interrupting it. When it finishes, a review page opens automatically in your browser, showing every change it made. From there you can:
+
+- Accept or reject an entire file, an entire hunk, or a single line
+- See exactly what changed with clear, correct diff styling (a line being restored looks different from a line being undone, since those are opposite outcomes)
+- Search the file list once a review spans more than a few files
+- Leave a short note explaining why you rejected something. That note is automatically included in Claude's context on your next message, so it can avoid repeating the same mistake instead of guessing why you were unhappy
+- Apply the review once you're satisfied, which reverts anything you rejected and leaves the rest untouched
+
+Rejected changes are reverted directly on disk using git, computed fresh each time against the current file state. Nothing is written to disk speculatively, and the underlying logic is covered by an automated test suite.
+
+## Installation
+
+```bash
+claude plugin marketplace add <your-github-user>/claude-review
+claude plugin install claude-review@claude-review-marketplace
+```
+
+This registers the plugin's hooks automatically. There's no settings file to edit and nothing to add to `.gitignore`. You'll need Node.js 18 or later and git, both of which any Claude Code user already has.
+
+## Usage
+
+1. Switch your session to `acceptEdits` mode. In the terminal, press `Shift+Tab` once; this is the same mode Anthropic recommends for reviewing changes afterward, which is exactly what this tool is for.
+2. Ask Claude to do a task that involves editing files, and let it run to completion without interrupting it.
+3. When it finishes, your browser opens automatically to a review page for that project.
+4. Go through the changes. Accept what looks right, reject what doesn't, and leave a short reason on anything you reject.
+5. Click **Apply Review**. Rejected changes are reverted; everything else stays as Claude left it.
+6. If you rejected anything, your next message to Claude will include an automatic note about what was rejected and why.
+
+## How it works
+
+For readers who want the technical detail:
+
+- This tool requires the project to be a git repository, since git's own object model is what it uses to take and compare snapshots without ever touching your actual commit history.
+- At the start of a session, and again before each of your messages by default, the tool records the current state of your working tree as a baseline. This is done by writing it into a temporary git index and creating a commit object that never becomes part of your actual history. Any uncommitted changes you already had at that moment become part of the baseline, so they're never mistaken for something Claude did.
+- When Claude finishes a turn, the tool diffs the current files against that baseline and builds the review page from the result. It reads the session transcript first to check whether any files were actually touched, so a turn that was pure conversation doesn't trigger any of this. Because the baseline covers your entire working tree, build output or dependency folders like `node_modules` that aren't already gitignored will make this step slower and the review noisier; keeping them gitignored is worth doing independently of this tool.
+- How changes are grouped into hunks follows git's standard unified-diff format, so two edits within a few lines of each other appear as one combined hunk rather than two separate ones.
+- Rejecting a change works by reading the real file from disk and computing the diff again at that exact moment, then reverting just the selected lines. Recomputing fresh before every action, rather than trusting an older snapshot, means that rejecting one change and later rejecting a different change in the same file can't accidentally corrupt either one.
+
+## Feedback
+
+This is a young project built to close a specific gap in Claude Code's workflow. If something doesn't work the way you'd expect, or you have an idea that would make it more useful, please open an issue at `https://github.com/<your-github-user>/claude-review/issues`. A clear description of what you expected versus what happened is the most useful thing you can include.
+
+If it's useful to you, starring the repository helps other people come across it.
+
+## License
+
+MIT

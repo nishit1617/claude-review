@@ -1,0 +1,27 @@
+{
+  "name": "claude-review",
+  "version": "1.0.1",
+  "description": "Batch diff review for Claude Code: review, accept, or reject every change Claude made, per hunk, after the session ends.",
+  "bin": {
+    "claude-review": "bin/claude-review.js"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "public",
+    "hooks",
+    ".claude-plugin"
+  ],
+  "keywords": [
+    "claude-code",
+    "claude",
+    "diff",
+    "review",
+    "hooks"
+  ],
+  "license": "MIT"
+}

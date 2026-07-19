@@ -1,0 +1,13 @@
+{
+  "name": "claude-review-marketplace",
+  "owner": {
+    "name": "Nishit"
+  },
+  "plugins": [
+    {
+      "name": "claude-review",
+      "source": "./",
+      "description": "Batch diff review: Claude edits freely, then you accept or reject every change per hunk in a browser UI. Rejected hunks revert via git; your reasons feed back to Claude."
+    }
+  ]
+}
