@@ -104,10 +104,17 @@
   .seg:hover .segbar { display: flex; }
   .segbar button { padding: 1px 8px; font-size: 11px; border-radius: 5px; background: var(--card); }
   .reason { padding: 8px 16px 12px; }
-  .reason input { width: 100%; font: 13px var(--mono); color: var(--ink);
-    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
-  .reason input::placeholder { color: var(--muted); }
-  .reason input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .reason-row { position: relative; }
+  .reason-row input { width: 100%; padding-right: 38px; font: 13px var(--mono); color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding-top: 7px; padding-bottom: 7px; padding-left: 10px; box-sizing: border-box; }
+  .reason-row input::placeholder { color: var(--muted); }
+  .reason-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .reason-submit { position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; padding: 0; border-radius: 50%; border: none;
+    background: var(--add-fg); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; line-height: 1; }
+  .reason-submit:hover:not(:disabled) { opacity: .85; }
+  .reason-submit:disabled { background: var(--line); color: var(--muted); cursor: default; }
   .reason-view { display: flex; align-items: center; gap: 8px; font: 13px var(--mono); color: var(--ink);
     background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
   .reason-view .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -399,21 +406,37 @@ function renderReasonBox(h, reasonDiv) {
     view.appendChild(txt); view.appendChild(editBtn); view.appendChild(delBtn);
     reasonDiv.appendChild(view);
   } else {
+    const row = el('div', 'reason-row');
     const inp = document.createElement('input');
     inp.placeholder = 'Why? This goes back to Claude as feedback (optional)';
     inp.value = reasons[h.id] || '';
-    inp.oninput = () => reasons[h.id] = inp.value;
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'reason-submit';
+    submitBtn.type = 'button';
+    submitBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+    submitBtn.title = 'Submit reason (or press Enter)';
+    submitBtn.disabled = !inp.value.trim();
+
+    const confirm = () => {
+      if (!inp.value.trim()) { inp.blur(); return; }
+      reasonConfirmed[h.id] = true;
+      renderReasonBox(h, reasonDiv);
+    };
+
+    inp.oninput = () => {
+      reasons[h.id] = inp.value;
+      submitBtn.disabled = !inp.value.trim();
+    };
     inp.onkeydown = (e) => {
       if (e.key !== 'Enter') return;
       e.preventDefault(); // never let Enter bubble into a page-level submit/Apply action
-      if (inp.value.trim()) {
-        reasonConfirmed[h.id] = true;
-        renderReasonBox(h, reasonDiv);
-      } else {
-        inp.blur();
-      }
+      confirm();
     };
-    reasonDiv.appendChild(inp);
+    submitBtn.onclick = confirm;
+
+    row.appendChild(inp);
+    row.appendChild(submitBtn);
+    reasonDiv.appendChild(row);
   }
 }
 
@@ -423,9 +446,6 @@ function paintHunk(h) {
   hunkEl.querySelectorAll('pre .l').forEach(sp => {
     if (sp.dataset.i === undefined) return;
     const flagged = s.has(+sp.dataset.i);
-    // A rejected '+' line is being undone (struck through). A rejected
-    // '-' line is being RESTORED — the opposite outcome — so it must
-    // look kept, not crossed out, or it reads as "both sides erased."
     sp.classList.toggle('rej', flagged && sp.classList.contains('a'));
     sp.classList.toggle('restoring', flagged && sp.classList.contains('d'));
   });
@@ -433,7 +453,13 @@ function paintHunk(h) {
   hunkEl.className = 'hunk ' + state;
   hunkEl.querySelector('.st').textContent =
     state === 'accepted' ? '' : state === 'rejected' ? 'rejected \u00b7' : s.size + ' of ' + total + ' lines reverting \u00b7';
-  hunkEl.querySelector('.reason').style.display = s.size ? '' : 'none';
+  const reasonDiv = hunkEl.querySelector('.reason');
+  reasonDiv.style.display = s.size ? '' : 'none';
+  if (s.size === 0 && (reasons[h.id] || reasonConfirmed[h.id])) {
+    reasons[h.id] = '';
+    reasonConfirmed[h.id] = false;
+    renderReasonBox(h, reasonDiv);
+  }
 }
 
 function tally() {
