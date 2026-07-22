@@ -1,6 +1,6 @@
 {
   "name": "claude-review",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Batch diff review for Claude Code: review, accept, or reject every change Claude made, per hunk, after the session ends.",
   "bin": {
     "claude-review": "bin/claude-review.js"

@@ -6,12 +6,14 @@
 <title>Claude Review</title>
 <style>
   :root {
-    --bg: #F7F7F4; --card: #FFFFFF; --card2: #F2F3F0;
+    --bg: #FFFFFF; --card: #FFFFFF; --card2: #F1F0FB;
     --line: #E2E4E0; --ink: #22272D; --muted: #67707B;
     --accent: #0E7569; --accent-ink: #FFFFFF;
     --add-bg: #E9F5EE; --add-fg: #1A7F37;
     --del-bg: #FBEDEA; --del-fg: #C0402A;
     --warn: #9A6700;
+    --blue-bg: #E6F1FB; --blue-fg: #185FA5;
+    --purple-bg: #EEEDFE; --purple-fg: #534AB7;
     --shadow: 0 1px 2px rgba(30,35,40,.05), 0 4px 14px rgba(30,35,40,.04);
     --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
     --sans: "Segoe UI", -apple-system, Roboto, "Helvetica Neue", sans-serif;
@@ -23,87 +25,129 @@
     --add-bg: #16301F; --add-fg: #66D08D;
     --del-bg: #34201F; --del-fg: #F0937D;
     --warn: #D9A94A;
+    --blue-bg: #16283A; --blue-fg: #6DA9E8;
+    --purple-bg: #241F3D; --purple-fg: #A79CEE;
     --shadow: none;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
-    font: 15px/1.55 var(--sans); transition: background .2s, color .2s; }
+    font: 15px/1.55 var(--sans); transition: background .2s, color .2s;
+    min-height: 100vh; display: flex; flex-direction: column; }
   header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center;
     gap: 14px; padding: 12px 24px 10px; background: var(--card);
     border-bottom: 1px solid var(--line); box-shadow: var(--shadow); flex-wrap: wrap; }
   header h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
   header h1 .ver { font-size: 11px; color: var(--muted); font-weight: 400;
     border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
-  header .tally { color: var(--muted); font-size: 13px; }
   header .spacer { flex: 1; }
-  #fileSearch { font: 13px var(--sans); color: var(--ink); background: var(--bg);
-    border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; width: 380px; }
-  #fileSearch:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
-  #fileSearch::placeholder { color: var(--muted); }
-  .file.search-hidden { display: none; }
-  #bar { flex-basis: 100%; height: 4px; border-radius: 999px; overflow: hidden;
-    background: var(--card2); display: flex; }
-  #bar span { height: 100%; transition: width .25s; }
-  #bar .b-acc { background: var(--accent); }
-  #bar .b-par { background: var(--warn); }
-  #bar .b-rej { background: var(--del-fg); }
   button { font: inherit; font-size: 13px; color: var(--ink); background: var(--card);
     border: 1px solid var(--line); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
   button:hover { border-color: var(--muted); }
-  /* Shared semantic color-coding for accept/reject actions at every
-     level (bulk, file, hunk, segment) — one visual language instead of
-     styling each level separately. Subtle by default, clearer on
-     hover/focus so the page doesn't read as a wall of red/green. */
   .btn-accept { color: var(--add-fg); border-color: color-mix(in srgb, var(--add-fg) 35%, var(--line)); }
   .btn-accept:hover, .btn-accept:focus-visible { background: var(--add-bg); border-color: var(--add-fg); }
   .btn-reject { color: var(--del-fg); border-color: color-mix(in srgb, var(--del-fg) 35%, var(--line)); }
   .btn-reject:hover, .btn-reject:focus-visible { background: var(--del-bg); border-color: var(--del-fg); }
+  .btn-viewed { color: var(--blue-fg); border-color: color-mix(in srgb, var(--blue-fg) 35%, var(--line)); }
+  .btn-viewed:hover, .btn-viewed:focus-visible { background: var(--blue-bg); border-color: var(--blue-fg); }
+  .viewed-toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    font-size: 13px; color: var(--blue-fg); border: 1px solid color-mix(in srgb, var(--blue-fg) 35%, var(--line));
+    border-radius: 8px; padding: 6px 14px; }
+  .viewed-toggle:hover { background: var(--blue-bg); border-color: var(--blue-fg); }
+  .viewed-toggle input { width: 15px; height: 15px; margin: 0; accent-color: var(--blue-fg); cursor: pointer; }
   button.primary { background: var(--accent); border-color: var(--accent);
     color: var(--accent-ink); font-weight: 600; }
   button.primary:hover { filter: brightness(1.06); }
   button.primary:disabled { opacity: .45; cursor: default; }
   #theme { padding: 6px 10px; line-height: 0; display: inline-flex; align-items: center; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px; }
-  .file { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    margin-bottom: 20px; overflow: hidden; box-shadow: var(--shadow); }
-  .filehead { display: flex; align-items: center; gap: 10px; padding: 10px 16px;
-    background: var(--card2); border-bottom: 1px solid var(--line);
-    font-family: var(--mono); font-size: 13px; }
-  .filehead .plus { color: var(--add-fg); } .filehead .minus { color: var(--del-fg); }
-  .filehead .fileacts { margin-left: auto; display: flex; gap: 6px; }
-  .filehead .fileacts button { padding: 3px 12px; font-size: 12px; background: var(--card); }
+  .wrap { padding: 24px; width: 100%; box-sizing: border-box;
+    flex: 1; display: flex; flex-direction: column; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow); }
+  .stat .num { font-size: 26px; font-weight: 600; line-height: 1.1; }
+  .stat .lbl { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .stat .badge { width: 40px; height: 40px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0; }
+  .stat.files .badge { background: var(--blue-bg); color: var(--blue-fg); }
+  .stat.changes .badge { background: var(--purple-bg); color: var(--purple-fg); }
+  .stat.accepted .num { color: var(--add-fg); } .stat.accepted .badge { background: var(--add-bg); color: var(--add-fg); }
+  .stat.rejected .num { color: var(--del-fg); } .stat.rejected .badge { background: var(--del-bg); color: var(--del-fg); }
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: stretch; flex: 1; }
+  .sidebar { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 90px; }
+  .sidebar-head { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--muted);
+    letter-spacing: .04em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  .sfile { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer;
+    border-bottom: 1px solid var(--line); }
+  .sfile:last-child { border-bottom: 0; }
+  .sfile:hover { background: var(--card2); }
+  .sfile.current { background: var(--add-bg); }
+  .sfile-icon { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; }
+  .sfile-icon.viewed { background: var(--add-fg); color: #fff; }
+  .sfile-icon.pending { border: 1.5px solid var(--line); }
+  .sfile-info { min-width: 0; }
+  .sfile-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sfile-dir { font-size: 11.5px; color: var(--muted); font-family: var(--mono);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .detail { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+  @keyframes crSlideIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes crSlideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-24px); } }
+  .detail.slide-in { animation: crSlideIn .22s ease-out; }
+  .detail.slide-out { animation: crSlideOut .18s ease-in; }
+  .dhead { display: flex; align-items: center; gap: 12px; padding: 16px 20px;
+    border-bottom: 1px solid var(--line); }
+  .dhead .ficon { width: 36px; height: 36px; border-radius: 8px; background: var(--blue-bg);
+    color: var(--blue-fg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .dhead .fmeta { flex: 1; min-width: 0; }
+  .dhead .fname { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dhead .fdir { font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+  .dhead .copy-path { display: flex; align-items: center; justify-content: center;
+    padding: 0; width: 34px; height: 34px; background: none; border: none;
+    color: var(--muted); border-radius: 6px; flex-shrink: 0; }
+  .dhead .copy-path:hover { background: var(--bg); color: var(--ink); }
+  .dstats { display: flex; align-items: center; gap: 20px; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13px; }
+  .dstats .plus { color: var(--add-fg); } .dstats .minus { color: var(--del-fg); }
+  .dstats .fileacts { margin-left: auto; display: flex; gap: 6px; }
   .hunk { border-bottom: 1px solid var(--line); }
   @keyframes crPulse { 0% { box-shadow: inset 0 0 0 2px var(--accent); } 100% { box-shadow: inset 0 0 0 0px transparent; } }
   .hunk.pulse { animation: crPulse .5s ease-out; }
   .hunk:last-child { border-bottom: 0; }
-  .hunkbar { display: flex; align-items: center; gap: 10px; padding: 6px 16px;
-    font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .hunkbar { display: flex; align-items: center; gap: 10px; padding: 6px 20px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted); background: var(--card2); }
   .hunkbar .acts { margin-left: auto; display: flex; gap: 6px; }
   .hunkbar button { padding: 3px 12px; font-size: 12px; border-radius: 6px; }
   .hunk.accepted .hunkbar .st { color: var(--accent); }
   .hunk.rejected .hunkbar { color: var(--del-fg); }
   .hunk.partial .hunkbar { color: var(--warn); }
   .hunk.rejected pre { opacity: .6; }
-  pre { margin: 0; padding: 8px 0; font-family: var(--mono); font-size: 12.5px;
-    line-height: 1.65; overflow-x: auto; }
-  pre .l { display: block; padding: 0 16px; white-space: pre; }
+  pre { margin: 0; padding: 4px 0; font-family: var(--mono); font-size: 12.5px;
+    line-height: 1.65; }
+  pre .l { display: flex; min-width: 100%; }
+  pre .l .gutter { flex-shrink: 0; width: 74px; display: flex; user-select: none;
+    color: var(--muted); opacity: .7; }
+  pre .l .gutter span { flex: 1; text-align: right; padding-right: 8px; }
+  pre .l .txt { padding: 0 16px; white-space: pre-wrap; overflow-wrap: break-word; min-width: 0; flex: 1; }
   pre .a { background: var(--add-bg); color: var(--add-fg); }
   pre .d { background: var(--del-bg); color: var(--del-fg); }
   pre .c { color: var(--muted); }
-  pre .a, pre .d { cursor: pointer; }
-  pre .a:hover, pre .d:hover { outline: 1px solid var(--muted); outline-offset: -1px; }
-  pre .rej { text-decoration: line-through; opacity: .55; }
-  pre .rej::after { content: ' \21a9 reverting'; text-decoration: none; opacity: .9;
+  pre .a .txt, pre .d .txt { cursor: pointer; }
+  pre .a:hover .txt, pre .d:hover .txt { outline: 1px solid var(--muted); outline-offset: -1px; }
+  pre .rej .txt { text-decoration: line-through; opacity: .55; }
+  pre .rej .txt::after { content: ' \21a9 reverting'; text-decoration: none; opacity: .9;
     font-size: 11px; color: var(--del-fg); }
-  pre .restoring { opacity: 1; }
-  pre .restoring::after { content: ' \21a9 restoring'; text-decoration: none; opacity: .9;
+  pre .restoring .txt { opacity: 1; }
+  pre .restoring .txt::after { content: ' \21a9 restoring'; text-decoration: none; opacity: .9;
     font-size: 11px; color: var(--add-fg); }
   .seg { position: relative; border-left: 2px solid var(--line); }
   .seg:hover { border-left-color: var(--accent); }
   .segbar { position: absolute; right: 8px; top: 2px; display: none; gap: 4px; z-index: 2; }
   .seg:hover .segbar { display: flex; }
   .segbar button { padding: 1px 8px; font-size: 11px; border-radius: 5px; background: var(--card); }
-  .reason { padding: 8px 16px 12px; }
+  .reason { padding: 8px 20px 12px; }
   .reason-row { position: relative; }
   .reason-row input { width: 100%; padding-right: 38px; font: 13px var(--mono); color: var(--ink);
     background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding-top: 7px; padding-bottom: 7px; padding-left: 10px; box-sizing: border-box; }
@@ -128,16 +172,13 @@
 <body>
 <header>
   <h1>Claude Review<span class="ver">v__CR_VERSION__</span></h1>
-  <span class="tally" id="tally"></span>
   <span class="spacer"></span>
-  <input id="fileSearch" type="text" placeholder="Search files&hellip; (Ctrl+K)" aria-label="Search files">
   <button id="theme" title="Switch light / dark" aria-label="Switch light / dark"></button>
   <button id="acceptAll" class="btn-accept">&#10003; Accept All</button>
   <button id="rejectAll" class="btn-reject">&#10007; Reject All</button>
   <button class="primary" id="submit">Apply Review</button>
-  <div id="bar"><span class="b-acc"></span><span class="b-par"></span><span class="b-rej"></span></div>
 </header>
-<main id="main"><div class="empty">Loading changes…</div></main>
+<div class="wrap" id="main"><div class="empty">Loading changes…</div></div>
 <script>
 // Theme: light by default, remembers your choice, follows OS preference first time
 (function initTheme() {
@@ -148,15 +189,30 @@
 })();
 const ICON_MOON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
 const ICON_SUN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const ICON_FILE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+const ICON_CHANGES = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6L2 12l6 6M16 6l6 6-6 6"/></svg>';
+const ICON_CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+const ICON_X = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const ICON_CHECK_SM = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
 function paintThemeBtn() {
   document.getElementById('theme').innerHTML =
     document.documentElement.dataset.theme === 'dark' ? ICON_SUN : ICON_MOON;
 }
+// A self-upgrade reload (see __crReload below) fires the same
+// 'pagehide' event a real tab close does — from the browser's
+// perspective, reloading IS an unload. Without this flag, the close
+// beacon would fire during a routine version-upgrade reload and tell
+// the server the tab is gone, when it's actually back within a
+// fraction of a second. That falsely-cleared state is exactly what
+// let a duplicate tab open during what should have been a seamless
+// self-upgrade.
+let intentionalReload = false;
 window.addEventListener('pagehide', () => {
+  if (intentionalReload) return; // reloading on purpose — not a real close
   try { navigator.sendBeacon('/api/close'); } catch (_) {}
 });
 
-window.__crReload = window.__crReload || (() => location.reload());
+window.__crReload = window.__crReload || (() => { intentionalReload = true; location.reload(); });
 
 document.getElementById('theme').onclick = () => {
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -167,6 +223,8 @@ document.getElementById('theme').onclick = () => {
 paintThemeBtn();
 
 let model = null;
+let currentFileIndex = 0;
+const viewedFiles = new Set(); // filePath -> viewed, persists across re-renders (e.g. live refresh)
 const lineRej = {};  // hunkId -> Set of rejected line indices (into hunk.lines)
 const reasons = {};  // hunkId -> string
 const reasonConfirmed = {}; // hunkId -> bool, true once Enter has "submitted" the reason
@@ -178,7 +236,7 @@ let currentSig = null;
 async function startPolling() {
   const first = await fetch('/api/sig').then(r => r.json()).catch(() => null);
   currentSig = first && first.sig;
-  pollTimer = setInterval(pollOnce, 3000);
+  pollTimer = setInterval(pollOnce, 1000);
   // Browsers throttle setInterval in background tabs, which can leave
   // the server's "is anyone viewing this?" check stale. Firing an
   // immediate poll the moment the tab becomes visible again keeps
@@ -225,7 +283,8 @@ async function refresh() {
     lineRej[h.id] = new Set();
     changedIdx[h.id] = h.lines.map((l,i)=>[l,i]).filter(([l])=>l[0]==='+'||l[0]==='-').map(([,i])=>i);
   }
-  render();
+  if (currentFileIndex >= model.files.length) currentFileIndex = 0;
+  renderAll();
   toast('Updated with the latest changes');
 }
 
@@ -255,103 +314,218 @@ async function load() {
     lineRej[h.id] = new Set();
     changedIdx[h.id] = h.lines.map((l,i)=>[l,i]).filter(([l])=>l[0]==='+'||l[0]==='-').map(([,i])=>i);
   }
-  render();
+  renderAll();
 }
 
-function render() {
+function splitPath(filePath) {
+  const idx = filePath.lastIndexOf('/');
+  return idx === -1 ? { name: filePath, dir: '' } : { name: filePath.slice(idx + 1), dir: filePath.slice(0, idx) };
+}
+
+function renderAll() {
   const main = document.getElementById('main');
   main.innerHTML = '';
-  for (const f of model.files) {
-    const fileEl = el('div', 'file');
-    fileEl.dataset.path = f.filePath.toLowerCase();
-    const head = el('div', 'filehead');
-    head.innerHTML = '<span>' + esc(f.filePath) + '</span>'
-      + '<span class="plus">+' + f.additions + '</span>'
-      + '<span class="minus">\u2212' + f.deletions + '</span>'
-      + '<span class="fileacts"><button class="btn-accept" data-f="acc">\u2713 Accept File</button>'
-      + '<button class="btn-reject" data-f="rej">\u2717 Reject File</button></span>';
-    head.querySelector('[data-f="acc"]').onclick = () => { for (const h of f.hunks) setHunk(h, false); };
-    head.querySelector('[data-f="rej"]').onclick = () => { for (const h of f.hunks) setHunk(h, true); };
-    fileEl.appendChild(head);
-
-    for (const h of f.hunks) {
-      const hunkEl = el('div', 'hunk');
-      hunkEl.id = h.id;
-      const bar = el('div', 'hunkbar');
-      const showHunkActs = f.hunks.length > 1; // single-hunk files: file-level buttons already cover it
-      bar.innerHTML = '<span class="st"></span><span>' + esc(h.header) + '</span>'
-        + (showHunkActs
-            ? '<span class="acts"><button class="btn-accept" data-a="acc">\u2713 Accept</button>'
-              + '<button class="btn-reject" data-a="rej">\u2717 Reject</button></span>'
-            : '');
-      if (showHunkActs) {
-        bar.querySelector('[data-a="acc"]').onclick = () => setHunk(h, false);
-        bar.querySelector('[data-a="rej"]').onclick = () => setHunk(h, true);
-      }
-      hunkEl.appendChild(bar);
-
-      const pre = el('pre');
-      // Group consecutive changed lines into segments with their own controls
-      let i = 0;
-      while (i < h.lines.length) {
-        const l = h.lines[i];
-        const changed = (l[0] === '+' || l[0] === '-') && !l.startsWith('\\');
-        if (!changed) {
-          pre.appendChild(lineSpan(h, i, false));
-          i++;
-          continue;
-        }
-        const seg = el('div', 'seg');
-        const segIdx = [];
-        while (i < h.lines.length && (h.lines[i][0] === '+' || h.lines[i][0] === '-' || h.lines[i].startsWith('\\'))) {
-          if (!h.lines[i].startsWith('\\')) {
-            seg.appendChild(lineSpan(h, i, true));
-            segIdx.push(i);
-          }
-          i++;
-        }
-        const segbar = el('div', 'segbar');
-        const keep = el('button', 'btn-accept'); keep.textContent = '\u2713 Accept';
-        const rev = el('button', 'btn-reject'); rev.textContent = '\u2717 Reject';
-        keep.onclick = (e) => {
-          e.stopPropagation();
-          const before = rejSnapshot(h);
-          segIdx.forEach(x => lineRej[h.id].delete(x));
-          paintHunk(h); tally();
-          if (rejSnapshot(h) === before) pulseHunk(h);
-        };
-        rev.onclick = (e) => {
-          e.stopPropagation();
-          const before = rejSnapshot(h);
-          segIdx.forEach(x => lineRej[h.id].add(x));
-          paintHunk(h); tally();
-          if (rejSnapshot(h) === before) pulseHunk(h);
-        };
-        segbar.appendChild(keep); segbar.appendChild(rev);
-        seg.appendChild(segbar);
-        pre.appendChild(seg);
-      }
-      hunkEl.appendChild(pre);
-
-      const reason = el('div', 'reason');
-      reason.style.display = 'none';
-      renderReasonBox(h, reason);
-      hunkEl.appendChild(reason);
-
-      fileEl.appendChild(hunkEl);
-    }
-    main.appendChild(fileEl);
-    for (const h of f.hunks) paintHunk(h);
-  }
-  applyFileSearch();
+  main.appendChild(buildStats());
+  const layout = el('div', 'layout');
+  layout.appendChild(buildSidebar());
+  layout.appendChild(buildDetail(model.files[currentFileIndex]));
+  main.appendChild(layout);
+  for (const h of model.files[currentFileIndex].hunks) paintHunk(h);
   tally();
 }
 
-function applyFileSearch() {
-  const q = document.getElementById('fileSearch').value.trim().toLowerCase();
-  document.querySelectorAll('.file').forEach((fileEl) => {
-    fileEl.classList.toggle('search-hidden', q.length > 0 && !fileEl.dataset.path.includes(q));
+function buildStats() {
+  const wrap = el('div', 'stats');
+  let changes = 0, accepted = 0, rejected = 0;
+  for (const f of model.files) for (const h of f.hunks) {
+    changes++;
+    const s = lineRej[h.id].size, total = changedIdx[h.id].length;
+    if (s === total && total > 0) rejected++; else if (s === 0) accepted++;
+  }
+  const tiles = [
+    ['files', ICON_FILE, model.files.length, 'Files'],
+    ['changes', ICON_CHANGES, changes, 'Changes'],
+    ['accepted', ICON_CHECK, accepted, 'Accepted'],
+    ['rejected', ICON_X, rejected, 'Rejected'],
+  ];
+  for (const [cls, icon, num, lbl] of tiles) {
+    const tile = el('div', 'stat ' + cls);
+    tile.innerHTML = '<div><div class="num">' + num + '</div><div class="lbl">' + lbl + '</div></div>'
+      + '<div class="badge">' + icon + '</div>';
+    wrap.appendChild(tile);
+  }
+  return wrap;
+}
+
+function buildSidebar() {
+  const aside = el('div', 'sidebar');
+  aside.innerHTML = '<div class="sidebar-head">Files (' + model.files.length + ')</div>';
+  const list = el('div');
+  model.files.forEach((f, i) => {
+    const { name, dir } = splitPath(f.filePath);
+    const row = el('div', 'sfile' + (i === currentFileIndex ? ' current' : ''));
+    const isViewed = viewedFiles.has(f.filePath);
+    row.innerHTML = '<span class="sfile-icon ' + (isViewed ? 'viewed' : 'pending') + '">' + (isViewed ? ICON_CHECK_SM : '') + '</span>'
+      + '<span class="sfile-info"><div class="sfile-name">' + esc(name) + '</div>'
+      + (dir ? '<div class="sfile-dir">' + esc(dir) + '</div>' : '') + '</span>';
+    row.onclick = () => goToFile(i);
+    list.appendChild(row);
   });
+  aside.appendChild(list);
+  return aside;
+}
+
+function goToFile(index) {
+  if (index === currentFileIndex || index < 0 || index >= model.files.length) return;
+  currentFileIndex = index;
+  const main = document.getElementById('main');
+  const oldDetail = main.querySelector('.detail');
+  let rebuilt = false;
+  const rebuild = () => {
+    if (rebuilt) return; // whichever of animationend / the fallback timeout fires first wins — never both
+    rebuilt = true;
+    const layout = main.querySelector('.layout');
+    const newDetail = buildDetail(model.files[currentFileIndex]);
+    newDetail.classList.add('slide-in');
+    if (oldDetail) layout.replaceChild(newDetail, oldDetail); else layout.appendChild(newDetail);
+    for (const h of model.files[currentFileIndex].hunks) paintHunk(h);
+    // Sidebar's "current" highlight needs updating too, cheaper to
+    // rebuild it than diff which row changed.
+    const newSidebar = buildSidebar();
+    layout.replaceChild(newSidebar, layout.querySelector('.sidebar'));
+  };
+  if (oldDetail) {
+    oldDetail.classList.add('slide-out');
+    oldDetail.addEventListener('animationend', rebuild, { once: true });
+    // Fallback: if the animation is interrupted, skipped (reduced-motion
+    // settings, some environments don't fire animationend reliably), or
+    // never starts for any reason, navigation must still complete rather
+    // than silently hang forever waiting for an event that never comes.
+    setTimeout(rebuild, 250);
+  } else {
+    rebuild();
+  }
+}
+
+function buildDetail(f) {
+  const detail = el('div', 'detail');
+  const { name, dir } = splitPath(f.filePath);
+  const head = el('div', 'dhead');
+  head.innerHTML = '<span class="ficon">' + ICON_FILE + '</span>'
+    + '<span class="fmeta"><div class="fname">' + esc(name) + '</div>'
+    + (dir ? '<div class="fdir">' + esc(dir) + '</div>' : '') + '</span>'
+    + '<button class="copy-path" aria-label="Copy file path" title="Copy file path">'
+      + '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="14" rx="2"/><path d="M8 8V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-4"/></svg></button>';
+  head.querySelector('.copy-path').onclick = (e) => copyFilePath(f.filePath, e.currentTarget);
+  detail.appendChild(head);
+
+  const dstats = el('div', 'dstats');
+  dstats.innerHTML = '<span class="plus">+' + f.additions + '</span>'
+    + '<span class="minus">\u2212' + f.deletions + '</span>'
+    + '<span class="fileacts"><button class="btn-accept" data-f="acc">\u2713 Accept</button>'
+    + '<button class="btn-reject" data-f="rej">\u2717 Reject</button>'
+    + '<label class="viewed-toggle"><input type="checkbox" data-f="viewed"' + (viewedFiles.has(f.filePath) ? ' checked' : '') + '> Viewed</label></span>';
+  dstats.querySelector('[data-f="acc"]').onclick = () => { for (const h of f.hunks) setHunk(h, false); };
+  dstats.querySelector('[data-f="rej"]').onclick = () => { for (const h of f.hunks) setHunk(h, true); };
+  dstats.querySelector('[data-f="viewed"]').onchange = (e) => {
+    if (e.target.checked) markViewed(f);
+    else { viewedFiles.delete(f.filePath); renderAll(); } // unchecking is a correction — stay put, don't navigate away
+  };
+  detail.appendChild(dstats);
+
+  for (const h of f.hunks) {
+    const hunkEl = el('div', 'hunk');
+    hunkEl.id = h.id;
+    const bar = el('div', 'hunkbar');
+    const showHunkActs = f.hunks.length > 1; // single-hunk files: file-level buttons already cover it
+    bar.innerHTML = '<span class="st"></span><span>' + hunkRangeLabel(h) + '</span>'
+      + (showHunkActs
+          ? '<span class="acts"><button class="btn-accept" data-a="acc">\u2713 Accept</button>'
+            + '<button class="btn-reject" data-a="rej">\u2717 Reject</button></span>'
+          : '');
+    if (showHunkActs) {
+      bar.querySelector('[data-a="acc"]').onclick = () => setHunk(h, false);
+      bar.querySelector('[data-a="rej"]').onclick = () => setHunk(h, true);
+    }
+    hunkEl.appendChild(bar);
+
+    const pre = el('pre');
+    let oldLn = h.oldStart != null ? h.oldStart : 1;
+    let newLn = h.newStart != null ? h.newStart : 1;
+    let i = 0;
+    while (i < h.lines.length) {
+      const l = h.lines[i];
+      const changed = (l[0] === '+' || l[0] === '-') && !l.startsWith('\\');
+      if (!changed) {
+        pre.appendChild(lineSpan(h, i, false, oldLn, newLn));
+        if (!l.startsWith('\\')) { oldLn++; newLn++; }
+        i++;
+        continue;
+      }
+      const seg = el('div', 'seg');
+      const segIdx = [];
+      while (i < h.lines.length && (h.lines[i][0] === '+' || h.lines[i][0] === '-' || h.lines[i].startsWith('\\'))) {
+        if (!h.lines[i].startsWith('\\')) {
+          const isAdd = h.lines[i][0] === '+';
+          seg.appendChild(lineSpan(h, i, true, isAdd ? null : oldLn, isAdd ? newLn : null));
+          segIdx.push(i);
+          if (isAdd) newLn++; else oldLn++;
+        }
+        i++;
+      }
+      const segbar = el('div', 'segbar');
+      const keep = el('button', 'btn-accept'); keep.textContent = '\u2713 Accept';
+      const rev = el('button', 'btn-reject'); rev.textContent = '\u2717 Reject';
+      keep.onclick = (e) => {
+        e.stopPropagation();
+        const before = rejSnapshot(h);
+        segIdx.forEach(x => lineRej[h.id].delete(x));
+        paintHunk(h); tally();
+        if (rejSnapshot(h) === before) pulseHunk(h);
+      };
+      rev.onclick = (e) => {
+        e.stopPropagation();
+        const before = rejSnapshot(h);
+        segIdx.forEach(x => lineRej[h.id].add(x));
+        paintHunk(h); tally();
+        if (rejSnapshot(h) === before) pulseHunk(h);
+      };
+      segbar.appendChild(keep); segbar.appendChild(rev);
+      seg.appendChild(segbar);
+      pre.appendChild(seg);
+    }
+    hunkEl.appendChild(pre);
+
+    const reason = el('div', 'reason');
+    reason.style.display = 'none';
+    renderReasonBox(h, reason);
+    hunkEl.appendChild(reason);
+
+    detail.appendChild(hunkEl);
+  }
+  return detail;
+}
+
+// Human-readable stand-in for the raw "@@ -a,b +c,d @@" header — most
+// readers don't parse unified-diff range syntax at a glance.
+function hunkRangeLabel(h) {
+  const start = h.newStart != null ? h.newStart : 1;
+  const span = Math.max(h.additions || 0, h.deletions || 0, 1);
+  return 'Lines ' + start + '\u2013' + (start + span - 1);
+}
+
+function markViewed(f) {
+  viewedFiles.add(f.filePath);
+  // Advance to the next file that hasn't been viewed yet, wrapping
+  // around past the end — not just the next index — so reviewing out
+  // of order (skip one, come back to it later) naturally lands you
+  // back on whatever's still unread instead of leaving you stuck at
+  // the end with an unread file sitting behind you.
+  for (let step = 1; step <= model.files.length; step++) {
+    const idx = (currentFileIndex + step) % model.files.length;
+    if (!viewedFiles.has(model.files[idx].filePath)) { goToFile(idx); return; }
+  }
+  renderAll(); // everything is viewed — nowhere unread to go, just refresh the sidebar's checkmark
 }
 
 function rejSnapshot(h) {
@@ -386,6 +560,33 @@ function pulseHunk(h) {
   setTimeout(() => el.classList.remove('pulse'), 500);
 }
 
+function copyFilePath(filePath, btn) {
+  const original = btn.innerHTML;
+  const doneIcon = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+  const showDone = () => {
+    btn.innerHTML = doneIcon;
+    btn.title = 'Copied!';
+    setTimeout(() => { btn.innerHTML = original; btn.title = 'Copy file path'; }, 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(filePath).then(showDone).catch(() => fallbackCopy(filePath, showDone));
+  } else {
+    fallbackCopy(filePath, showDone);
+  }
+}
+
+function fallbackCopy(text, then) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (_) {}
+  document.body.removeChild(ta);
+  then();
+}
+
 // Renders a hunk's reason box in one of two modes: an editable input
 // (default, or after clicking Edit), or a confirmed read-only view with
 // Edit/Delete once Enter has been pressed. Enter NEVER triggers Apply
@@ -417,6 +618,8 @@ function renderReasonBox(h, reasonDiv) {
     submitBtn.title = 'Submit reason (or press Enter)';
     submitBtn.disabled = !inp.value.trim();
 
+    // Shared by both the Enter key and the button click, so clicking
+    // does exactly what pressing Enter already does — one path, not two.
     const confirm = () => {
       if (!inp.value.trim()) { inp.blur(); return; }
       reasonConfirmed[h.id] = true;
@@ -442,10 +645,14 @@ function renderReasonBox(h, reasonDiv) {
 
 function paintHunk(h) {
   const hunkEl = document.getElementById(h.id);
+  if (!hunkEl) return; // hunk belongs to a file not currently in the detail pane
   const s = lineRej[h.id], total = changedIdx[h.id].length;
   hunkEl.querySelectorAll('pre .l').forEach(sp => {
     if (sp.dataset.i === undefined) return;
     const flagged = s.has(+sp.dataset.i);
+    // A rejected '+' line is being undone (struck through). A rejected
+    // '-' line is being RESTORED — the opposite outcome — so it must
+    // look kept, not crossed out, or it reads as "both sides erased."
     sp.classList.toggle('rej', flagged && sp.classList.contains('a'));
     sp.classList.toggle('restoring', flagged && sp.classList.contains('d'));
   });
@@ -456,6 +663,10 @@ function paintHunk(h) {
   const reasonDiv = hunkEl.querySelector('.reason');
   reasonDiv.style.display = s.size ? '' : 'none';
   if (s.size === 0 && (reasons[h.id] || reasonConfirmed[h.id])) {
+    // Accepting invalidates any reason attached to a PRIOR rejection —
+    // without this, re-rejecting the same hunk later would silently
+    // resurface old text the user never reconfirmed this time, and it
+    // could reach Claude as feedback despite the user having moved on.
     reasons[h.id] = '';
     reasonConfirmed[h.id] = false;
     renderReasonBox(h, reasonDiv);
@@ -470,14 +681,8 @@ function tally() {
     if (s === changedIdx[id].length && s > 0) rej++;
     else if (s > 0) partial++;
   }
-  document.getElementById('tally').textContent =
-    total + ' hunks \u00b7 ' + (total - rej - partial) + ' accepted \u00b7 ' + rej + ' rejected'
-    + (partial ? ' \u00b7 ' + partial + ' partial' : '');
-  const acc = total - rej - partial;
-  const pct = (n) => total ? (100 * n / total) + '%' : '0%';
-  document.querySelector('#bar .b-acc').style.width = pct(acc);
-  document.querySelector('#bar .b-par').style.width = pct(partial);
-  document.querySelector('#bar .b-rej').style.width = pct(rej);
+  const statsEl = document.querySelector('.stats');
+  if (statsEl) { statsEl.replaceWith(buildStats()); }
 }
 
 async function submit() {
@@ -502,14 +707,29 @@ async function submit() {
     + '<p>Accepted changes kept. Rejected lines in ' + count + ' hunk(s) reverted.</p>'
     + (fails.length ? '<p class="fail">Could not revert: '
         + fails.map(x => esc(x.file)).join(', ') + ' \u2014 file changed since the diff; revert via git.</p>' : '')
-    + '<p style="color:var(--dim)">Feedback saved to .claude-review/feedback.md. You can close this tab.</p></div>';
+    + '<p style="color:var(--dim)">Feedback saved to .claude-review/feedback.md. This tab will try to close itself in a moment \u2014 if your browser blocks that, you can close it yourself.</p></div>';
+
+  // Best-effort auto-close. Browsers only let a script close a tab it
+  // opened itself via window.open() — these tabs are launched by the
+  // OS opening the default browser instead, which most browsers treat
+  // as NOT script-opened, so this can silently do nothing depending on
+  // the browser. Harmless to attempt regardless, and it means the tab
+  // genuinely closing (rather than lingering in an ambiguous "maybe
+  // still open" state) is what the next review can rely on, instead
+  // of only a polling-based guess.
+  setTimeout(() => { window.close(); }, 900);
 }
 
-function lineSpan(h, i, clickable) {
+function lineSpan(h, i, clickable, oldLn, newLn) {
   const l = h.lines[i];
   const cls = l[0] === '+' ? 'a' : l[0] === '-' ? 'd' : 'c';
   const span = el('span', 'l ' + cls);
-  span.textContent = l || ' ';
+  const gutter = el('span', 'gutter');
+  gutter.innerHTML = '<span>' + (oldLn != null ? oldLn : '') + '</span><span>' + (newLn != null ? newLn : '') + '</span>';
+  span.appendChild(gutter);
+  const txt = el('span', 'txt');
+  txt.textContent = l || ' ';
+  span.appendChild(txt);
   if (clickable) {
     span.title = 'Click to reject just this line';
     span.onclick = () => toggleLine(h, i);
@@ -521,15 +741,6 @@ function lineSpan(h, i, clickable) {
 function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-document.getElementById('fileSearch').oninput = applyFileSearch;
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
-    const box = document.getElementById('fileSearch');
-    box.focus();
-    box.select();
-  }
-});
 document.getElementById('acceptAll').onclick = () => { for (const f of model.files) for (const h of f.hunks) setHunk(h, false); };
 document.getElementById('rejectAll').onclick = () => { for (const f of model.files) for (const h of f.hunks) setHunk(h, true); };
 document.getElementById('submit').onclick = submit;
