@@ -16,7 +16,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { log, readStdinJson, findRepoRoot } = require("../lib/util");
+const { log, readStdinJson, findRepoRoot, statePath, readJson } = require("../lib/util");
 
 const cmd = process.argv[2];
 const USAGE = "Usage: claude-review <snapshot|prompt|open|review>";
@@ -65,9 +65,15 @@ async function main() {
         fs.unlinkSync(fbPath);
       } catch (_) {}
       // 2) Every prompt starts a fresh baseline, so each review shows
-      // only what that specific request changed.
-      const { snapshot } = require("../lib/snapshot");
-      snapshot(repoRoot);
+      // only what that specific request changed — unless the user has
+      // switched to accumulate mode, where the baseline stays put across
+      // prompts and only advances when a review is applied (see
+      // lib/server.js's /api/submit handler).
+      const reviewMode = readJson(statePath(repoRoot, "config.json"), {}).reviewMode;
+      if (reviewMode !== "accumulate") {
+        const { snapshot } = require("../lib/snapshot");
+        snapshot(repoRoot);
+      }
       break;
     }
     case "open":
