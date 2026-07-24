@@ -230,7 +230,7 @@
         <span class="mdi-icon" data-icon></span>
         <span class="mdi-text">
           <div class="mdi-title">Accumulate</div>
-          <div class="mdi-desc">Shows every uncommitted change in the repo, like `git status`.</div>
+          <div class="mdi-desc">Displays all uncommitted changes in the current repository.</div>
         </span>
         <span class="mdi-check" data-check></span>
       </div>
@@ -448,7 +448,7 @@ async function selectMode(mode) {
     });
     if (!res.ok) throw new Error();
     await refresh();
-    toast(mode === 'accumulate' ? 'Now showing every uncommitted change in the repo' : 'Now showing only the latest prompt\'s changes');
+    toast(mode === 'accumulate' ? 'Now showing every uncommitted change in the project' : 'Now showing only the latest prompt\'s changes');
   } catch (_) {
     paintMode(prev);
     toast("Couldn't save mode — try again");
