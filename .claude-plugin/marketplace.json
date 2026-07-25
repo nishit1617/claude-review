@@ -1,5 +1,6 @@
 {
   "name": "claude-review-marketplace",
+  "description": "Marketplace for the claude-review plugin — batch diff review for Claude Code with per-hunk accept/reject and feedback loop.",
   "owner": {
     "name": "Nishit"
   },
