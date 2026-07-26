@@ -7,11 +7,11 @@
 <style>
   :root {
     --bg: #FFFFFF; --card: #FFFFFF; --card2: #F1F0FB;
-    --line: #E2E4E0; --ink: #22272D; --muted: #67707B;
+    --line: #E2E4E0; --ink: #22272D; --muted: #67707B; --hunkbar: #F6F7F6;
     --accent: #0E7569; --accent-ink: #FFFFFF;
     --add-bg: #E9F5EE; --add-fg: #1A7F37;
     --del-bg: #FBEDEA; --del-fg: #C0402A;
-    --warn: #9A6700;
+    --warn: #9A6700; --warn-bg: #FFF3CD; --warn-fg: #9A6700;
     --blue-bg: #E6F1FB; --blue-fg: #185FA5;
     --purple-bg: #EEEDFE; --purple-fg: #534AB7;
     --shadow: 0 1px 2px rgba(30,35,40,.05), 0 4px 14px rgba(30,35,40,.04);
@@ -21,11 +21,11 @@
   }
   [data-theme="dark"] {
     --bg: #14181D; --card: #1B222A; --card2: #222A33;
-    --line: #2C353F; --ink: #E4EAF0; --muted: #8A94A0;
+    --line: #2C353F; --ink: #E4EAF0; --muted: #8A94A0; --hunkbar: #222A33;
     --accent: #3CBDAD; --accent-ink: #0E1A18;
     --add-bg: #16301F; --add-fg: #66D08D;
     --del-bg: #34201F; --del-fg: #F0937D;
-    --warn: #D9A94A;
+    --warn: #D9A94A; --warn-bg: #2E2410; --warn-fg: #D9A94A;
     --blue-bg: #16283A; --blue-fg: #6DA9E8;
     --purple-bg: #241F3D; --purple-fg: #A79CEE;
     --shadow: none;
@@ -66,39 +66,50 @@
     color: var(--accent-ink); font-weight: 600; }
   button.primary:hover { filter: brightness(1.06); }
   button.primary:disabled { opacity: .45; cursor: default; }
+  .confirm-overlay { position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; }
+  .confirm-overlay.hidden { display: none; }
+  .confirm-modal { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--menu-shadow); padding: 28px 28px 22px; width: 380px; max-width: calc(100vw - 32px); }
+  .confirm-modal h2 { margin: 0 0 18px; font-size: 17px; font-weight: 600; }
+  .confirm-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
+  .cs-tile { background: var(--card2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; text-align: center; }
+  .cs-tile .cs-num { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .cs-tile .cs-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+  .cs-tile.cs-files .cs-num { color: var(--blue-fg); }
+  .cs-tile.cs-accepted .cs-num { color: var(--add-fg); }
+  .cs-tile.cs-partial .cs-num { color: var(--warn-fg); }
+  .cs-tile.cs-rejected .cs-num { color: var(--del-fg); }
+  .confirm-msg { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+  .confirm-msg strong { color: var(--ink); }
+  .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .confirm-actions button { min-width: 90px; }
   #theme { padding: 6px 10px; line-height: 0; display: inline-flex; align-items: center; }
-  .mode-dd { position: relative; }
-  .mode-dd-btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 500;
-    padding: 5px 10px 5px 8px; }
-  .mode-dd-btn .mdb-icon { width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--blue-bg); color: var(--blue-fg); }
-  .mode-dd-btn.accumulate .mdb-icon { background: var(--purple-bg); color: var(--purple-fg); }
-  .mode-dd-btn .chev { display: flex; color: var(--muted); transition: transform .15s ease; }
-  .mode-dd-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
-  .mode-dd-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 280px;
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: var(--menu-shadow); padding: 6px; z-index: 30;
-    opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none;
-    transition: opacity .14s ease, transform .14s ease; }
-  .mode-dd-menu.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-  .mode-dd-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px;
-    border-radius: 8px; cursor: pointer; }
-  .mode-dd-item:hover, .mode-dd-item.focused { background: var(--card2); }
-  .mode-dd-item .mdi-icon { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--blue-bg); color: var(--blue-fg); }
-  .mode-dd-item[data-value="accumulate"] .mdi-icon { background: var(--purple-bg); color: var(--purple-fg); }
-  .mode-dd-item .mdi-text { min-width: 0; }
-  .mode-dd-item .mdi-title { font-size: 13.5px; font-weight: 600; }
-  .mode-dd-item.selected .mdi-title { color: var(--accent); }
-  .mode-dd-item .mdi-desc { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
-  .mode-dd-item .mdi-check { margin-left: auto; margin-top: 2px; color: var(--accent);
-    flex-shrink: 0; visibility: hidden; }
-  .mode-dd-item.selected .mdi-check { visibility: visible; }
+  #theme svg { transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .2s; }
+  #theme.switching svg { transform: rotate(180deg) scale(0); opacity: 0; }
+  /* View Transitions — disable default cross-fade so JS clip-path animation takes over */
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  ::view-transition-new(root) { z-index: 999; }
+  /* Fallback: broad CSS transitions when View Transitions API is unavailable */
+  .theme-transition *, .theme-transition *::before, .theme-transition *::after {
+    transition: background-color .3s ease, border-color .3s ease, color .3s ease, box-shadow .3s ease !important; }
+  .mode-seg { display: inline-flex; align-items: stretch; background: var(--card2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px;
+    height: 34px; box-sizing: border-box; }
+  .mode-seg .mode-seg-btn { height: 100%; padding: 0 14px; font: inherit; font-size: 13px;
+    font-weight: 500; color: var(--muted); background: transparent; border: none;
+    border-radius: 7px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+  .mode-seg .mode-seg-btn.active { background: var(--card); color: var(--ink); font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,.10), 0 0 0 1px var(--line); }
+  .mode-seg .mode-seg-btn:hover:not(.active) { color: var(--ink); }
+  #main { transition: opacity .15s ease; }
+  #main.mode-loading { opacity: 0.4; pointer-events: none; }
+  #main.mode-switching { opacity: 0; pointer-events: none; }
   .wrap { padding: 24px; width: 100%; box-sizing: border-box;
     flex: 1; display: flex; flex-direction: column; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
   .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
     padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
     box-shadow: var(--shadow); }
@@ -109,12 +120,70 @@
   .stat.files .badge { background: var(--blue-bg); color: var(--blue-fg); }
   .stat.changes .badge { background: var(--purple-bg); color: var(--purple-fg); }
   .stat.accepted .num { color: var(--add-fg); } .stat.accepted .badge { background: var(--add-bg); color: var(--add-fg); }
+  .stat.partial .num { color: var(--warn-fg); } .stat.partial .badge { background: var(--warn-bg); color: var(--warn-fg); }
   .stat.rejected .num { color: var(--del-fg); } .stat.rejected .badge { background: var(--del-bg); color: var(--del-fg); }
-  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: stretch; flex: 1; }
-  .sidebar { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 90px; }
-  .sidebar-head { padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--muted);
-    letter-spacing: .04em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  .layout { display: flex; align-items: stretch; flex: 1; }
+  .sidebar { flex-shrink: 0; width: 300px; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 90px;
+    display: flex; flex-direction: column; max-height: calc(100vh - 110px); }
+  .resize-handle { flex-shrink: 0; width: 20px; display: flex; align-items: center; justify-content: center;
+    cursor: col-resize; position: relative; }
+  .resize-handle::after { content: ''; width: 2px; height: 48px; background: var(--line);
+    border-radius: 2px; transition: background .15s, height .15s; }
+  .resize-handle:hover::after, .resize-handle.dragging::after { background: var(--accent); height: 64px; }
+  .resize-handle .rh-dots { position: absolute; display: flex; flex-direction: column; gap: 4px;
+    opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .resize-handle:hover .rh-dots, .resize-handle.dragging .rh-dots { opacity: 1; }
+  .resize-handle .rh-dots span { width: 3px; height: 3px; border-radius: 50%; background: var(--accent); display: block; }
+  .sfile-list { flex: 1; overflow-y: auto; }
+  .sidebar-head { padding: 12px 16px; border-bottom: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+  .sidebar-head .sf-title { font-size: 12px; font-weight: 600; color: var(--muted);
+    letter-spacing: .04em; text-transform: uppercase; }
+  .sf-tools { display: flex; align-items: center; gap: 8px; }
+  .sf-search { position: relative; flex: 1; display: flex; align-items: center; }
+  .sf-search-icon { position: absolute; left: 9px; display: flex; color: var(--muted); pointer-events: none; }
+  .sf-search input { width: 100%; box-sizing: border-box; height: 34px; padding: 0 26px 0 30px;
+    font: inherit; font-size: 13px; color: inherit; background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; outline: none; }
+  .sf-search input:focus { border-color: var(--accent); }
+  .sf-search input::placeholder { color: var(--muted); }
+  .sf-clear { position: absolute; right: 4px; padding: 3px; line-height: 0; border: 0;
+    background: none; color: var(--muted); cursor: pointer; border-radius: 6px; }
+  .sf-clear:hover { background: var(--line); color: inherit; }
+  .filter-dd { position: relative; flex-shrink: 0; }
+  .filter-dd-btn { display: inline-flex; align-items: center; justify-content: center;
+    box-sizing: border-box; width: 34px; height: 34px; padding: 0; line-height: 0; color: var(--muted); }
+  .filter-dd-btn:hover { color: inherit; }
+  .filter-dd-btn.active { background: var(--blue-bg); border-color: var(--blue-fg); color: var(--blue-fg); }
+  .filter-dd-menu { position: absolute; top: calc(100% + 6px); right: 0; width: 170px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--menu-shadow); padding: 6px; z-index: 30;
+    opacity: 0; transform: translateY(-6px) scale(.98); pointer-events: none;
+    transition: opacity .14s ease, transform .14s ease; }
+  .filter-dd-menu.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .filter-dd-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .filter-dd-item:hover, .filter-dd-item:focus { background: var(--card2); outline: none; }
+  .filter-dd-item .fdi-check { display: flex; color: var(--accent); flex-shrink: 0; visibility: hidden; }
+  .filter-dd-item.selected .fdi-check { visibility: visible; }
+  .filter-dd-item.selected .fdi-label { color: var(--accent); font-weight: 600; }
+  .sfile-empty { padding: 18px 16px; font-size: 13px; color: var(--muted); text-align: center; }
+  .sf-pager { display: flex; align-items: center; justify-content: center; gap: 3px;
+    padding: 8px 12px; border-top: 1px solid var(--line); flex-shrink: 0; flex-wrap: nowrap; }
+  .sf-pager:empty { display: none; }
+  .pg-arrow { padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center;
+    justify-content: center; border-radius: 7px; line-height: 0; flex-shrink: 0;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .pg-arrow:hover:not(:disabled) { border-color: var(--muted); }
+  .pg-arrow:disabled { opacity: .35; cursor: default; }
+  .pg-num { padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center;
+    justify-content: center; border-radius: 7px; font-size: 12px; font-family: inherit;
+    border: 1px solid transparent; background: transparent; color: var(--ink); flex-shrink: 0; }
+  .pg-num:hover { background: var(--card2); }
+  .pg-num.pg-active { background: var(--card2); font-weight: 600; border-color: var(--line); }
+  .pg-dots { font-size: 13px; color: var(--muted); width: 28px; text-align: center; flex-shrink: 0; line-height: 28px; }
+  .pg-blank { width: 28px; flex-shrink: 0; }
   .sfile { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer;
     border-bottom: 1px solid var(--line); }
   .sfile:last-child { border-bottom: 0; }
@@ -128,8 +197,8 @@
   .sfile-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sfile-dir { font-size: 11.5px; color: var(--muted); font-family: var(--mono);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .detail { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
+  .detail { flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden; }
   @keyframes crSlideIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes crSlideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-24px); } }
   .detail.slide-in { animation: crSlideIn .22s ease-out; }
@@ -153,14 +222,22 @@
   @keyframes crPulse { 0% { box-shadow: inset 0 0 0 2px var(--accent); } 100% { box-shadow: inset 0 0 0 0px transparent; } }
   .hunk.pulse { animation: crPulse .5s ease-out; }
   .hunk:last-child { border-bottom: 0; }
-  .hunkbar { display: flex; align-items: center; gap: 10px; padding: 6px 20px;
-    font-family: var(--mono); font-size: 11.5px; color: var(--muted); background: var(--card2); }
+  .hunkbar { display: flex; align-items: center; gap: 10px; padding: 8px 20px;
+    font-size: 13px; color: var(--muted); background: var(--hunkbar); }
+  .hunk-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer;
+    user-select: none; border-radius: 6px; }
+  .hunk-chev { display: flex; color: var(--muted); transition: transform .15s ease;
+    transform: rotate(180deg); }
+  .hunk.collapsed .hunk-chev { transform: rotate(0deg); }
+  .hunk-title { font-weight: 600; color: var(--ink); }
+  .hunk-range { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
   .hunkbar .acts { margin-left: auto; display: flex; gap: 6px; }
   .hunkbar button { padding: 3px 12px; font-size: 12px; border-radius: 6px; }
   .hunk.accepted .hunkbar .st { color: var(--accent); }
-  .hunk.rejected .hunkbar { color: var(--del-fg); }
-  .hunk.partial .hunkbar { color: var(--warn); }
+  .hunk.rejected .hunk-range, .hunk.rejected .hunkbar .st { color: var(--del-fg); }
+  .hunk.partial .hunk-range, .hunk.partial .hunkbar .st { color: var(--warn); }
   .hunk.rejected pre { opacity: .6; }
+  .hunk.collapsed pre, .hunk.collapsed .reason { display: none; }
   pre { margin: 0; padding: 4px 0; font-family: var(--mono); font-size: 12.5px;
     line-height: 1.65; }
   pre .l { display: flex; min-width: 100%; }
@@ -211,36 +288,26 @@
   <h1>Claude Review<span class="ver">v__CR_VERSION__</span></h1>
   <span class="spacer"></span>
   <button id="theme" title="Switch light / dark" aria-label="Switch light / dark"></button>
-  <div class="mode-dd" id="modeDD">
-    <button type="button" class="mode-dd-btn" id="modeDDBtn" aria-haspopup="listbox" aria-expanded="false">
-      <span class="mdb-icon" id="modeDDIcon"></span>
-      <span id="modeDDLabel">Per-request</span>
-      <span class="chev" id="modeDDChev"></span>
-    </button>
-    <div class="mode-dd-menu" id="modeDDMenu" role="listbox" aria-label="Review mode" tabindex="-1">
-      <div class="mode-dd-item" role="option" data-value="per-request" tabindex="0">
-        <span class="mdi-icon" data-icon></span>
-        <span class="mdi-text">
-          <div class="mdi-title">Per-request</div>
-          <div class="mdi-desc">Shows only the changes from your latest prompt.</div>
-        </span>
-        <span class="mdi-check" data-check></span>
-      </div>
-      <div class="mode-dd-item" role="option" data-value="accumulate" tabindex="0">
-        <span class="mdi-icon" data-icon></span>
-        <span class="mdi-text">
-          <div class="mdi-title">Accumulate</div>
-          <div class="mdi-desc">Displays all uncommitted changes in the current repository.</div>
-        </span>
-        <span class="mdi-check" data-check></span>
-      </div>
-    </div>
+  <div class="mode-seg" role="group" aria-label="Review mode">
+    <button type="button" class="mode-seg-btn" data-value="per-request">This turn</button>
+    <button type="button" class="mode-seg-btn" data-value="accumulate">All changes</button>
   </div>
   <button id="acceptAll" class="btn-accept">&#10003; Accept All</button>
   <button id="rejectAll" class="btn-reject">&#10007; Reject All</button>
   <button class="primary" id="submit">Apply Review</button>
 </header>
 <div class="wrap" id="main"><div class="empty">Loading changes…</div></div>
+<div class="confirm-overlay hidden" id="confirmOverlay">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Apply Review</h2>
+    <div class="confirm-summary" id="confirmSummary"></div>
+    <p class="confirm-msg" id="confirmMsg"></p>
+    <div class="confirm-actions">
+      <button id="confirmCancel">Cancel</button>
+      <button class="primary" id="confirmOk">Apply</button>
+    </div>
+  </div>
+</div>
 <script>
 // Theme: light by default, remembers your choice, follows OS preference first time
 (function initTheme() {
@@ -255,12 +322,11 @@ const ICON_FILE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" s
 const ICON_CHANGES = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6L2 12l6 6M16 6l6 6-6 6"/></svg>';
 const ICON_CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
 const ICON_X = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const ICON_PARTIAL = '<svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 A10 10 0 0 0 12 22 Z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="10" fill="none"/></svg>';
 const ICON_CHECK_SM = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
-const ICON_BOLT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>';
-const ICON_LAYERS = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>';
 const ICON_CHEV = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-const MODE_ICON = { 'per-request': ICON_BOLT, 'accumulate': ICON_LAYERS };
-const MODE_LABEL = { 'per-request': 'Per-request', 'accumulate': 'Accumulate' };
+const ICON_SEARCH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+const ICON_FUNNEL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.5V19l4 2v-8.5L22 3z"/></svg>';
 function paintThemeBtn() {
   document.getElementById('theme').innerHTML =
     document.documentElement.dataset.theme === 'dark' ? ICON_SUN : ICON_MOON;
@@ -281,17 +347,56 @@ window.addEventListener('pagehide', () => {
 
 window.__crReload = window.__crReload || (() => { intentionalReload = true; location.reload(); });
 
-document.getElementById('theme').onclick = () => {
+document.getElementById('theme').onclick = (e) => {
+  const btn = e.currentTarget;
   const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  try { localStorage.setItem('cr-theme', next); } catch (_) {}
-  paintThemeBtn();
+  const apply = () => {
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('cr-theme', next); } catch (_) {}
+    paintThemeBtn();
+  };
+
+  // Animate the icon out, swap it, then animate back in
+  btn.classList.add('switching');
+  setTimeout(() => { apply(); btn.classList.remove('switching'); }, 220);
+
+  // View Transitions ripple (Chrome/Edge/Safari 18+)
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduced && document.startViewTransition) {
+    const rect = btn.getBoundingClientRect();
+    const x = Math.round(rect.left + rect.width / 2);
+    const y = Math.round(rect.top + rect.height / 2);
+    const maxR = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    const transition = document.startViewTransition(() => {
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem('cr-theme', next); } catch (_) {}
+      paintThemeBtn();
+      btn.classList.remove('switching');
+    });
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
+        { duration: 480, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' }
+      );
+    });
+    return;
+  }
+
+  // Fallback: add broad CSS transitions for the duration of the swap
+  document.documentElement.classList.add('theme-transition');
+  setTimeout(() => document.documentElement.classList.remove('theme-transition'), 400);
 };
 paintThemeBtn();
 
 let model = null;
 let currentFileIndex = 0;
+let sidebarW = 300;
 const viewedFiles = new Set(); // filePath -> viewed, persists across re-renders (e.g. live refresh)
+let fileSearch = '';   // sidebar search text, persists across sidebar rebuilds
+let fileFilter = 'all'; // sidebar status filter: all | accepted | rejected | pending | viewed | unviewed
+let filePage = 0;      // current sidebar page (0-based), resets when filter/search changes
+const FILES_PER_PAGE = 10;
+const collapsedHunks = new Set(); // hunkId -> collapsed; reapplied by paintHunk since it rewrites .hunk's className
 const lineRej = {};  // hunkId -> Set of rejected line indices (into hunk.lines)
 const reasons = {};  // hunkId -> string
 const reasonConfirmed = {}; // hunkId -> bool, true once Enter has "submitted" the reason
@@ -348,8 +453,18 @@ async function pollOnce() {
 // Silent in-place update: re-fetch the review and re-render, with no
 // navigation and no flash.
 async function refresh() {
+  const data = await fetchReview();
+  applyReview(data);
+  toast('Updated with the latest changes');
+}
+
+async function fetchReview() {
   const res = await fetch('/api/review');
-  model = await res.json();
+  return res.json();
+}
+
+function applyReview(data) {
+  model = data;
   if (model.error || !model.files || !model.files.length) {
     document.getElementById('main').innerHTML = '<div class="empty">No changes to review.</div>';
     return;
@@ -364,7 +479,6 @@ async function refresh() {
   }
   if (currentFileIndex >= model.files.length) currentFileIndex = 0;
   renderAll();
-  toast('Updated with the latest changes');
 }
 
 function toast(msg) {
@@ -383,73 +497,52 @@ function toast(msg) {
 }
 
 // Custom dropdown (not a native <select>) so each option can carry an
-// icon + description, matching the rest of the app's card/menu styling.
-const modeDD = document.getElementById('modeDD');
-const modeDDBtn = document.getElementById('modeDDBtn');
-const modeDDMenu = document.getElementById('modeDDMenu');
-const modeDDItems = [...modeDDMenu.querySelectorAll('.mode-dd-item')];
+const modeSegBtns = [...document.querySelectorAll('.mode-seg-btn')];
 let currentMode = 'per-request';
-
-for (const item of modeDDItems) {
-  item.querySelector('[data-icon]').innerHTML = MODE_ICON[item.dataset.value];
-  item.querySelector('[data-check]').innerHTML = ICON_CHECK_SM;
-}
-document.getElementById('modeDDChev').innerHTML = ICON_CHEV;
 
 function paintMode(mode) {
   currentMode = mode;
-  document.getElementById('modeDDIcon').innerHTML = MODE_ICON[mode];
-  document.getElementById('modeDDLabel').textContent = MODE_LABEL[mode];
-  modeDDBtn.classList.toggle('accumulate', mode === 'accumulate');
-  for (const item of modeDDItems) {
-    const selected = item.dataset.value === mode;
-    item.classList.toggle('selected', selected);
-    item.setAttribute('aria-selected', String(selected));
+  for (const btn of modeSegBtns) {
+    btn.classList.toggle('active', btn.dataset.value === mode);
+    btn.setAttribute('aria-pressed', String(btn.dataset.value === mode));
   }
 }
 
-function openModeDD() {
-  modeDDMenu.classList.add('open');
-  modeDDBtn.setAttribute('aria-expanded', 'true');
-  (modeDDItems.find(i => i.dataset.value === currentMode) || modeDDItems[0]).focus();
-}
-function closeModeDD() {
-  modeDDMenu.classList.remove('open');
-  modeDDBtn.setAttribute('aria-expanded', 'false');
-}
-
-modeDDBtn.onclick = () => {
-  modeDDMenu.classList.contains('open') ? closeModeDD() : openModeDD();
-};
 document.addEventListener('click', (e) => {
-  if (!modeDD.contains(e.target)) closeModeDD();
+  // Sidebar filter dropdown is rebuilt dynamically, so close it via one
+  // shared listener rather than re-registering a handler on every rebuild.
+  const dd = document.querySelector('.filter-dd');
+  if (dd && dd._closeMenu && !dd.contains(e.target)) dd._closeMenu();
 });
-modeDDMenu.addEventListener('keydown', (e) => {
-  const i = modeDDItems.indexOf(document.activeElement);
-  if (e.key === 'Escape') { closeModeDD(); modeDDBtn.focus(); }
-  else if (e.key === 'ArrowDown') { e.preventDefault(); modeDDItems[(i + 1) % modeDDItems.length].focus(); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); modeDDItems[(i - 1 + modeDDItems.length) % modeDDItems.length].focus(); }
-  else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.activeElement.click(); }
-});
-for (const item of modeDDItems) {
-  item.onclick = () => selectMode(item.dataset.value);
+
+for (const btn of modeSegBtns) {
+  btn.onclick = () => selectMode(btn.dataset.value);
 }
 
 async function selectMode(mode) {
-  closeModeDD();
-  modeDDBtn.focus();
   if (mode === currentMode) return;
   const prev = currentMode;
-  paintMode(mode); // optimistic — feels instant
+  paintMode(mode);
+  const main = document.getElementById('main');
+  // Phase 1: dim the old content while the server recomputes the diff.
+  // The user can still see what was there — no white blank.
+  main.classList.add('mode-loading');
   try {
     const res = await fetch('/api/mode', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode }),
     });
     if (!res.ok) throw new Error();
-    await refresh();
+    const data = await fetchReview(); // fetch new data while old content is still (dimly) visible
+    // Phase 2: quick swap now that data is ready — only invisible for ~150ms.
+    main.classList.remove('mode-loading');
+    main.classList.add('mode-switching');
+    await new Promise(r => setTimeout(r, 150));
+    applyReview(data);
+    requestAnimationFrame(() => main.classList.remove('mode-switching'));
     toast(mode === 'accumulate' ? 'Now showing every uncommitted change in the project' : 'Now showing only the latest prompt\'s changes');
   } catch (_) {
+    main.classList.remove('mode-loading', 'mode-switching');
     paintMode(prev);
     toast("Couldn't save mode — try again");
   }
@@ -482,12 +575,42 @@ function splitPath(filePath) {
   return idx === -1 ? { name: filePath, dir: '' } : { name: filePath.slice(idx + 1), dir: filePath.slice(0, idx) };
 }
 
+function makeResizeHandle() {
+  const handle = el('div', 'resize-handle');
+  const dots = el('div', 'rh-dots');
+  dots.append(el('span', ''), el('span', ''), el('span', ''));
+  handle.appendChild(dots);
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const sidebar = handle.closest('.layout').querySelector('.sidebar');
+    const startX = e.clientX, startW = sidebar.getBoundingClientRect().width;
+    handle.classList.add('dragging');
+    document.body.style.cssText += ';cursor:col-resize!important;user-select:none!important';
+    const onMove = e => {
+      const w = Math.max(180, Math.min(600, startW + e.clientX - startX));
+      sidebar.style.width = w + 'px';
+      sidebarW = w;
+    };
+    const onUp = () => {
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  return handle;
+}
+
 function renderAll() {
   const main = document.getElementById('main');
   main.innerHTML = '';
   main.appendChild(buildStats());
   const layout = el('div', 'layout');
   layout.appendChild(buildSidebar());
+  layout.appendChild(makeResizeHandle());
   layout.appendChild(buildDetail(model.files[currentFileIndex]));
   main.appendChild(layout);
   for (const h of model.files[currentFileIndex].hunks) paintHunk(h);
@@ -496,16 +619,19 @@ function renderAll() {
 
 function buildStats() {
   const wrap = el('div', 'stats');
-  let changes = 0, accepted = 0, rejected = 0;
+  let changes = 0, accepted = 0, partial = 0, rejected = 0;
   for (const f of model.files) for (const h of f.hunks) {
     changes++;
     const s = lineRej[h.id].size, total = changedIdx[h.id].length;
-    if (s === total && total > 0) rejected++; else if (s === 0) accepted++;
+    if (s === total && total > 0) rejected++;
+    else if (s === 0) accepted++;
+    else partial++;
   }
   const tiles = [
     ['files', ICON_FILE, model.files.length, 'Files'],
     ['changes', ICON_CHANGES, changes, 'Changes'],
     ['accepted', ICON_CHECK, accepted, 'Accepted'],
+    ['partial', ICON_PARTIAL, partial, 'Partial'],
     ['rejected', ICON_X, rejected, 'Rejected'],
   ];
   for (const [cls, icon, num, lbl] of tiles) {
@@ -517,11 +643,59 @@ function buildStats() {
   return wrap;
 }
 
-function buildSidebar() {
-  const aside = el('div', 'sidebar');
-  aside.innerHTML = '<div class="sidebar-head">Files (' + model.files.length + ')</div>';
-  const list = el('div');
-  model.files.forEach((f, i) => {
+// Derive a file's overall status from its hunks, using the same accepted/
+// rejected comparison as buildStats(): a file is 'accepted' when nothing is
+// rejected, 'rejected' when every change is rejected, else 'pending' (mixed).
+function getFileStatus(f) {
+  let anyRej = false, allRej = true;
+  for (const h of f.hunks) {
+    const s = lineRej[h.id].size, total = changedIdx[h.id].length;
+    if (s > 0) anyRej = true;
+    if (!(s === total && total > 0)) allRej = false;
+  }
+  if (!anyRej) return 'accepted';
+  if (allRej) return 'rejected';
+  return 'pending';
+}
+
+// Whether a file passes the current search text AND the active status filter.
+function fileMatches(f) {
+  const q = fileSearch.trim().toLowerCase();
+  if (q && !f.filePath.toLowerCase().includes(q)) return false;
+  switch (fileFilter) {
+    case 'viewed': return viewedFiles.has(f.filePath);
+    case 'unviewed': return !viewedFiles.has(f.filePath);
+    case 'accepted': case 'rejected': return getFileStatus(f) === fileFilter;
+    default: return true; // 'all'
+  }
+}
+
+const FILTER_OPTS = [
+  ['all', 'All'], ['accepted', 'Accepted'], ['rejected', 'Rejected'],
+  ['viewed', 'Viewed'], ['unviewed', 'Unviewed'],
+];
+
+// Rebuild just the file rows (not the header), so typing in the search box
+// never recreates — and thus never blurs — the input element.
+function renderFileList(sidebar) {
+  const list = sidebar.querySelector('.sfile-list');
+  const matches = model.files.map((f, i) => [f, i]).filter(([f]) => fileMatches(f));
+  list.innerHTML = '';
+  const count = sidebar.querySelector('.sfile-count');
+  const totalPages = Math.max(1, Math.ceil(matches.length / FILES_PER_PAGE));
+  if (filePage >= totalPages) filePage = totalPages - 1;
+  if (count) count.textContent = matches.length;
+
+  if (matches.length === 0) {
+    const empty = el('div', 'sfile-empty');
+    empty.textContent = 'No files match';
+    list.appendChild(empty);
+    sidebar.querySelector('.sf-pager').innerHTML = '';
+    return;
+  }
+
+  const page = matches.slice(filePage * FILES_PER_PAGE, (filePage + 1) * FILES_PER_PAGE);
+  for (const [f, i] of page) {
     const { name, dir } = splitPath(f.filePath);
     const row = el('div', 'sfile' + (i === currentFileIndex ? ' current' : ''));
     const isViewed = viewedFiles.has(f.filePath);
@@ -530,14 +704,140 @@ function buildSidebar() {
       + (dir ? '<div class="sfile-dir">' + esc(dir) + '</div>' : '') + '</span>';
     row.onclick = () => goToFile(i);
     list.appendChild(row);
-  });
+  }
+
+  // Pagination bar — only render when more than one page exists
+  const pager = sidebar.querySelector('.sf-pager');
+  pager.innerHTML = '';
+  if (totalPages <= 1) return;
+
+  function pgArrow(label, title, disabled, onclick) {
+    const b = el('button', 'pg-arrow');
+    b.innerHTML = label; b.title = title; b.disabled = disabled;
+    if (!disabled) b.onclick = onclick;
+    return b;
+  }
+  function pgNum(pageIdx) {
+    const b = el('button', 'pg-num' + (pageIdx === filePage ? ' pg-active' : ''));
+    b.textContent = pageIdx + 1;
+    b.onclick = () => { filePage = pageIdx; renderFileList(sidebar); };
+    return b;
+  }
+  function pgDots() {
+    const s = el('span', 'pg-dots'); s.textContent = '…'; return s;
+  }
+  function pgBlank() {
+    // Invisible placeholder — keeps slot count fixed so pager width never changes.
+    const s = el('span', 'pg-blank'); return s;
+  }
+
+  // Always returns exactly 7 slots so the pager is the same width on every page.
+  function fixedSlots(cur, total) {
+    if (total <= 7) {
+      // Pad short lists with blanks to always fill 7 slots.
+      return Array.from({ length: 7 }, (_, i) => i < total ? i : null);
+    }
+    if (cur <= 3)          return [0, 1, 2, 3, 4, '…', total - 1];
+    if (cur >= total - 4)  return [0, '…', total - 5, total - 4, total - 3, total - 2, total - 1];
+    return [0, '…', cur - 1, cur, cur + 1, '…', total - 1];
+  }
+
+  const CHEV_L = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+  const CHEV_R = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+
+  pager.appendChild(pgArrow(CHEV_L, 'Previous page', filePage === 0, () => { filePage--; renderFileList(sidebar); }));
+  for (const s of fixedSlots(filePage, totalPages)) {
+    pager.appendChild(s === null ? pgBlank() : s === '…' ? pgDots() : pgNum(s));
+  }
+  pager.appendChild(pgArrow(CHEV_R, 'Next page', filePage === totalPages - 1, () => { filePage++; renderFileList(sidebar); }));
+}
+
+function buildSidebar() {
+  const aside = el('div', 'sidebar');
+  aside.style.width = sidebarW + 'px';
+
+  const head = el('div', 'sidebar-head');
+  const filterItems = FILTER_OPTS.map(function (opt) {
+    return '<div class="filter-dd-item" role="option" data-value="' + opt[0] + '" tabindex="0">'
+      + '<span class="fdi-check">' + ICON_CHECK_SM + '</span>'
+      + '<span class="fdi-label">' + opt[1] + '</span></div>';
+  }).join('');
+  head.innerHTML = '<div class="sf-title">Files (<span class="sfile-count"></span>)</div>'
+    + '<div class="sf-tools">'
+    + '<div class="sf-search"><span class="sf-search-icon">' + ICON_SEARCH + '</span>'
+    + '<input type="text" placeholder="Search files..." aria-label="Search files">'
+    + '<button class="sf-clear" aria-label="Clear search" title="Clear search" hidden>' + ICON_X + '</button></div>'
+    + '<div class="filter-dd">'
+    + '<button class="filter-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter files" title="Filter files">' + ICON_FUNNEL + '</button>'
+    + '<div class="filter-dd-menu" role="listbox" aria-label="Filter files">' + filterItems + '</div>'
+    + '</div>'
+    + '</div>';
+  aside.appendChild(head);
+
+  const list = el('div', 'sfile-list');
   aside.appendChild(list);
+  const pager = el('div', 'sf-pager');
+  aside.appendChild(pager);
+
+  // Search input — value seeded from state so it survives sidebar rebuilds
+  // (goToFile / renderAll / live refresh); oninput re-renders rows only.
+  const search = head.querySelector('.sf-search input');
+  const clearBtn = head.querySelector('.sf-clear');
+  search.value = fileSearch;
+  clearBtn.hidden = !fileSearch;
+  search.oninput = () => {
+    fileSearch = search.value;
+    filePage = 0;
+    clearBtn.hidden = !fileSearch;
+    renderFileList(aside);
+  };
+  clearBtn.onclick = () => {
+    fileSearch = '';
+    filePage = 0;
+    search.value = '';
+    clearBtn.hidden = true;
+    renderFileList(aside);
+    search.focus();
+  };
+
+  // Filter dropdown — single-select; the active option shows a check.
+  const dd = head.querySelector('.filter-dd');
+  const ddBtn = head.querySelector('.filter-dd-btn');
+  const ddMenu = head.querySelector('.filter-dd-menu');
+  ddBtn.classList.toggle('active', fileFilter !== 'all');
+  for (const item of ddMenu.querySelectorAll('.filter-dd-item')) {
+    item.classList.toggle('selected', item.dataset.value === fileFilter);
+    item.setAttribute('aria-selected', String(item.dataset.value === fileFilter));
+    item.onclick = () => {
+      fileFilter = item.dataset.value;
+      filePage = 0;
+      for (const it of ddMenu.querySelectorAll('.filter-dd-item')) {
+        it.classList.toggle('selected', it === item);
+        it.setAttribute('aria-selected', String(it === item));
+      }
+      ddBtn.classList.toggle('active', fileFilter !== 'all');
+      ddMenu.classList.remove('open');
+      ddBtn.setAttribute('aria-expanded', 'false');
+      renderFileList(aside);
+    };
+  }
+  ddBtn.onclick = () => {
+    const open = ddMenu.classList.toggle('open');
+    ddBtn.setAttribute('aria-expanded', String(open));
+  };
+  dd._closeMenu = () => { ddMenu.classList.remove('open'); ddBtn.setAttribute('aria-expanded', 'false'); };
+
+  renderFileList(aside);
   return aside;
 }
 
 function goToFile(index) {
   if (index === currentFileIndex || index < 0 || index >= model.files.length) return;
   currentFileIndex = index;
+  // Keep the current file visible: jump to whichever page it falls on.
+  const matches = model.files.map((f, i) => [f, i]).filter(([f]) => fileMatches(f));
+  const pos = matches.findIndex(([, i]) => i === index);
+  if (pos !== -1) filePage = Math.floor(pos / FILES_PER_PAGE);
   const main = document.getElementById('main');
   const oldDetail = main.querySelector('.detail');
   let rebuilt = false;
@@ -593,16 +893,23 @@ function buildDetail(f) {
   };
   detail.appendChild(dstats);
 
+  let hunkNum = 0;
   for (const h of f.hunks) {
-    const hunkEl = el('div', 'hunk');
+    hunkNum++;
+    const hunkEl = el('div', 'hunk' + (collapsedHunks.has(h.id) ? ' collapsed' : ''));
     hunkEl.id = h.id;
     const bar = el('div', 'hunkbar');
     const showHunkActs = f.hunks.length > 1; // single-hunk files: file-level buttons already cover it
-    bar.innerHTML = '<span class="st"></span><span>' + hunkRangeLabel(h) + '</span>'
+    bar.innerHTML = '<span class="hunk-toggle" role="button" tabindex="0" aria-label="Collapse hunk">'
+      + '<span class="hunk-chev">' + ICON_CHEV + '</span>'
+      + '<span class="hunk-title">Hunk ' + hunkNum + '</span>'
+      + '<span class="hunk-range">' + hunkRangeLabel(h) + '</span>'
+      + '<span class="st"></span></span>'
       + (showHunkActs
           ? '<span class="acts"><button class="btn-accept" data-a="acc">\u2713 Accept</button>'
             + '<button class="btn-reject" data-a="rej">\u2717 Reject</button></span>'
           : '');
+    bar.querySelector('.hunk-toggle').onclick = () => toggleHunkCollapse(h);
     if (showHunkActs) {
       bar.querySelector('[data-a="acc"]').onclick = () => setHunk(h, false);
       bar.querySelector('[data-a="rej"]').onclick = () => setHunk(h, true);
@@ -705,6 +1012,13 @@ function setHunk(h, rejectAll) {
   lineRej[h.id] = rejectAll ? new Set(changedIdx[h.id]) : new Set();
   paintHunk(h); tally();
   if (rejSnapshot(h) === before) pulseHunk(h);
+}
+
+function toggleHunkCollapse(h) {
+  if (collapsedHunks.has(h.id)) collapsedHunks.delete(h.id);
+  else collapsedHunks.add(h.id);
+  const hunkEl = document.getElementById(h.id);
+  if (hunkEl) hunkEl.classList.toggle('collapsed', collapsedHunks.has(h.id));
 }
 
 // Confirms a click registered ONLY when it didn't change anything
@@ -817,9 +1131,9 @@ function paintHunk(h) {
     sp.classList.toggle('restoring', flagged && sp.classList.contains('d'));
   });
   const state = s.size === 0 ? 'accepted' : s.size === total ? 'rejected' : 'partial';
-  hunkEl.className = 'hunk ' + state;
+  hunkEl.className = 'hunk ' + state + (collapsedHunks.has(h.id) ? ' collapsed' : '');
   hunkEl.querySelector('.st').textContent =
-    state === 'accepted' ? '' : state === 'rejected' ? 'rejected \u00b7' : s.size + ' of ' + total + ' lines reverting \u00b7';
+    state === 'accepted' ? '' : state === 'rejected' ? 'rejected' : s.size + ' of ' + total + ' lines reverting';
   const reasonDiv = hunkEl.querySelector('.reason');
   reasonDiv.style.display = s.size ? '' : 'none';
   if (s.size === 0 && (reasons[h.id] || reasonConfirmed[h.id])) {
@@ -845,7 +1159,41 @@ function tally() {
   if (statsEl) { statsEl.replaceWith(buildStats()); }
 }
 
+function showApplyConfirm() {
+  let totalFiles = model.files.length, accepted = 0, partial = 0, rejected = 0;
+  for (const f of model.files) for (const h of f.hunks) {
+    const s = lineRej[h.id].size, total = changedIdx[h.id].length;
+    if (s === total && total > 0) rejected++;
+    else if (s === 0) accepted++;
+    else partial++;
+  }
+  const summary = document.getElementById('confirmSummary');
+  summary.innerHTML =
+    '<div class="cs-tile cs-files"><div class="cs-num">' + totalFiles + '</div><div class="cs-lbl">Files</div></div>' +
+    '<div class="cs-tile cs-accepted"><div class="cs-num">' + accepted + '</div><div class="cs-lbl">Accepted</div></div>' +
+    '<div class="cs-tile cs-partial"><div class="cs-num">' + partial + '</div><div class="cs-lbl">Partial</div></div>' +
+    '<div class="cs-tile cs-rejected"><div class="cs-num">' + rejected + '</div><div class="cs-lbl">Rejected</div></div>';
+
+  const fileWord = totalFiles === 1 ? 'file' : 'files';
+  let msg;
+  if (rejected === 0 && partial === 0) {
+    msg = 'All changes across <strong>' + totalFiles + ' ' + fileWord + '</strong> will be kept.';
+  } else if (accepted === 0 && partial === 0) {
+    msg = 'All <strong>' + rejected + ' change' + (rejected === 1 ? '' : 's') + '</strong> across <strong>' + totalFiles + ' ' + fileWord + '</strong> will be reverted.';
+  } else {
+    const parts = [];
+    if (accepted > 0) parts.push('<strong>' + accepted + ' change' + (accepted === 1 ? '' : 's') + '</strong> kept');
+    if (partial > 0) parts.push('<strong>' + partial + '</strong> partially reverted');
+    if (rejected > 0) parts.push('<strong>' + rejected + '</strong> fully reverted');
+    msg = parts.join(', ') + ' across <strong>' + totalFiles + ' ' + fileWord + '</strong>.';
+  }
+  document.getElementById('confirmMsg').innerHTML = msg;
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+  document.getElementById('confirmOk').focus();
+}
+
 async function submit() {
+  document.getElementById('confirmOverlay').classList.add('hidden');
   if (pollTimer) clearInterval(pollTimer);
   const btn = document.getElementById('submit');
   btn.disabled = true; btn.textContent = 'Applying\u2026';
@@ -903,7 +1251,11 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&l
 
 document.getElementById('acceptAll').onclick = () => { for (const f of model.files) for (const h of f.hunks) setHunk(h, false); };
 document.getElementById('rejectAll').onclick = () => { for (const f of model.files) for (const h of f.hunks) setHunk(h, true); };
-document.getElementById('submit').onclick = submit;
+document.getElementById('submit').onclick = showApplyConfirm;
+document.getElementById('confirmOk').onclick = submit;
+document.getElementById('confirmCancel').onclick = () => document.getElementById('confirmOverlay').classList.add('hidden');
+document.getElementById('confirmOverlay').onclick = (e) => { if (e.target === e.currentTarget) document.getElementById('confirmOverlay').classList.add('hidden'); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.getElementById('confirmOverlay').classList.add('hidden'); });
 load();
 </script>
 </body>
