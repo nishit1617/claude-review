@@ -176,21 +176,6 @@
   .filter-dd-item.selected .fdi-check { visibility: visible; }
   .filter-dd-item.selected .fdi-label { color: var(--accent); font-weight: 600; }
   .sfile-empty { padding: 18px 16px; font-size: 13px; color: var(--muted); text-align: center; }
-  .sf-pager { display: flex; align-items: center; justify-content: center; gap: 3px;
-    padding: 8px 12px; border-top: 1px solid var(--line); flex-shrink: 0; flex-wrap: nowrap; }
-  .sf-pager:empty { display: none; }
-  .pg-arrow { padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center;
-    justify-content: center; border-radius: 7px; line-height: 0; flex-shrink: 0;
-    border: 1px solid var(--line); background: var(--card); color: var(--ink); }
-  .pg-arrow:hover:not(:disabled) { border-color: var(--muted); }
-  .pg-arrow:disabled { opacity: .35; cursor: default; }
-  .pg-num { padding: 0; width: 28px; height: 28px; display: inline-flex; align-items: center;
-    justify-content: center; border-radius: 7px; font-size: 12px; font-family: inherit;
-    border: 1px solid transparent; background: transparent; color: var(--ink); flex-shrink: 0; }
-  .pg-num:hover { background: var(--card2); }
-  .pg-num.pg-active { background: var(--card2); font-weight: 600; border-color: var(--line); }
-  .pg-dots { font-size: 13px; color: var(--muted); width: 28px; text-align: center; flex-shrink: 0; line-height: 28px; }
-  .pg-blank { width: 28px; flex-shrink: 0; }
   .sfile { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer;
     border-bottom: 1px solid var(--line); }
   .sfile:last-child { border-bottom: 0; }
@@ -400,9 +385,7 @@ let currentFileIndex = 0;
 let sidebarW = 300;
 const viewedFiles = new Set(); // filePath -> viewed, persists across re-renders (e.g. live refresh)
 let fileSearch = '';   // sidebar search text, persists across sidebar rebuilds
-let fileFilter = 'all'; // sidebar status filter: all | accepted | rejected | pending | viewed | unviewed
-let filePage = 0;      // current sidebar page (0-based), resets when filter/search changes
-const FILES_PER_PAGE = 10;
+let fileFilter = 'all'; // sidebar status filter: all | accepted | partial | rejected | viewed | unviewed
 const collapsedHunks = new Set(); // hunkId -> collapsed; reapplied by paintHunk since it rewrites .hunk's className
 const lineRej = {};  // hunkId -> Set of rejected line indices (into hunk.lines)
 const reasons = {};  // hunkId -> string
@@ -450,7 +433,7 @@ async function pollOnce() {
     // too, instead of only being picked up once at page load. Skipped
     // while the menu is open so a poll can't yank the selection out
     // from under someone mid-click.
-    if (mode && mode !== currentMode && !modeDDMenu.classList.contains('open')) {
+    if (mode && mode !== currentMode) {
       paintMode(mode);
       await refresh();
     }
@@ -662,7 +645,7 @@ function getFileStatus(f) {
   }
   if (!anyRej) return 'accepted';
   if (allRej) return 'rejected';
-  return 'pending';
+  return 'partial';
 }
 
 // Whether a file passes the current search text AND the active status filter.
@@ -672,13 +655,13 @@ function fileMatches(f) {
   switch (fileFilter) {
     case 'viewed': return viewedFiles.has(f.filePath);
     case 'unviewed': return !viewedFiles.has(f.filePath);
-    case 'accepted': case 'rejected': return getFileStatus(f) === fileFilter;
+    case 'accepted': case 'partial': case 'rejected': return getFileStatus(f) === fileFilter;
     default: return true; // 'all'
   }
 }
 
 const FILTER_OPTS = [
-  ['all', 'All'], ['accepted', 'Accepted'], ['rejected', 'Rejected'],
+  ['all', 'All'], ['accepted', 'Accepted'], ['partial', 'Partial'], ['rejected', 'Rejected'],
   ['viewed', 'Viewed'], ['unviewed', 'Unviewed'],
 ];
 
@@ -689,20 +672,16 @@ function renderFileList(sidebar) {
   const matches = model.files.map((f, i) => [f, i]).filter(([f]) => fileMatches(f));
   list.innerHTML = '';
   const count = sidebar.querySelector('.sfile-count');
-  const totalPages = Math.max(1, Math.ceil(matches.length / FILES_PER_PAGE));
-  if (filePage >= totalPages) filePage = totalPages - 1;
   if (count) count.textContent = matches.length;
 
   if (matches.length === 0) {
     const empty = el('div', 'sfile-empty');
     empty.textContent = 'No files match';
     list.appendChild(empty);
-    sidebar.querySelector('.sf-pager').innerHTML = '';
     return;
   }
 
-  const page = matches.slice(filePage * FILES_PER_PAGE, (filePage + 1) * FILES_PER_PAGE);
-  for (const [f, i] of page) {
+  for (const [f, i] of matches) {
     const { name, dir } = splitPath(f.filePath);
     const row = el('div', 'sfile' + (i === currentFileIndex ? ' current' : ''));
     const isViewed = viewedFiles.has(f.filePath);
@@ -712,51 +691,6 @@ function renderFileList(sidebar) {
     row.onclick = () => goToFile(i);
     list.appendChild(row);
   }
-
-  // Pagination bar — only render when more than one page exists
-  const pager = sidebar.querySelector('.sf-pager');
-  pager.innerHTML = '';
-  if (totalPages <= 1) return;
-
-  function pgArrow(label, title, disabled, onclick) {
-    const b = el('button', 'pg-arrow');
-    b.innerHTML = label; b.title = title; b.disabled = disabled;
-    if (!disabled) b.onclick = onclick;
-    return b;
-  }
-  function pgNum(pageIdx) {
-    const b = el('button', 'pg-num' + (pageIdx === filePage ? ' pg-active' : ''));
-    b.textContent = pageIdx + 1;
-    b.onclick = () => { filePage = pageIdx; renderFileList(sidebar); };
-    return b;
-  }
-  function pgDots() {
-    const s = el('span', 'pg-dots'); s.textContent = '…'; return s;
-  }
-  function pgBlank() {
-    // Invisible placeholder — keeps slot count fixed so pager width never changes.
-    const s = el('span', 'pg-blank'); return s;
-  }
-
-  // Always returns exactly 7 slots so the pager is the same width on every page.
-  function fixedSlots(cur, total) {
-    if (total <= 7) {
-      // Pad short lists with blanks to always fill 7 slots.
-      return Array.from({ length: 7 }, (_, i) => i < total ? i : null);
-    }
-    if (cur <= 3)          return [0, 1, 2, 3, 4, '…', total - 1];
-    if (cur >= total - 4)  return [0, '…', total - 5, total - 4, total - 3, total - 2, total - 1];
-    return [0, '…', cur - 1, cur, cur + 1, '…', total - 1];
-  }
-
-  const CHEV_L = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
-  const CHEV_R = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
-
-  pager.appendChild(pgArrow(CHEV_L, 'Previous page', filePage === 0, () => { filePage--; renderFileList(sidebar); }));
-  for (const s of fixedSlots(filePage, totalPages)) {
-    pager.appendChild(s === null ? pgBlank() : s === '…' ? pgDots() : pgNum(s));
-  }
-  pager.appendChild(pgArrow(CHEV_R, 'Next page', filePage === totalPages - 1, () => { filePage++; renderFileList(sidebar); }));
 }
 
 function buildSidebar() {
@@ -783,8 +717,6 @@ function buildSidebar() {
 
   const list = el('div', 'sfile-list');
   aside.appendChild(list);
-  const pager = el('div', 'sf-pager');
-  aside.appendChild(pager);
 
   // Search input — value seeded from state so it survives sidebar rebuilds
   // (goToFile / renderAll / live refresh); oninput re-renders rows only.
@@ -794,13 +726,11 @@ function buildSidebar() {
   clearBtn.hidden = !fileSearch;
   search.oninput = () => {
     fileSearch = search.value;
-    filePage = 0;
     clearBtn.hidden = !fileSearch;
     renderFileList(aside);
   };
   clearBtn.onclick = () => {
     fileSearch = '';
-    filePage = 0;
     search.value = '';
     clearBtn.hidden = true;
     renderFileList(aside);
@@ -817,7 +747,6 @@ function buildSidebar() {
     item.setAttribute('aria-selected', String(item.dataset.value === fileFilter));
     item.onclick = () => {
       fileFilter = item.dataset.value;
-      filePage = 0;
       for (const it of ddMenu.querySelectorAll('.filter-dd-item')) {
         it.classList.toggle('selected', it === item);
         it.setAttribute('aria-selected', String(it === item));
@@ -841,10 +770,6 @@ function buildSidebar() {
 function goToFile(index) {
   if (index === currentFileIndex || index < 0 || index >= model.files.length) return;
   currentFileIndex = index;
-  // Keep the current file visible: jump to whichever page it falls on.
-  const matches = model.files.map((f, i) => [f, i]).filter(([f]) => fileMatches(f));
-  const pos = matches.findIndex(([, i]) => i === index);
-  if (pos !== -1) filePage = Math.floor(pos / FILES_PER_PAGE);
   const main = document.getElementById('main');
   const oldDetail = main.querySelector('.detail');
   let rebuilt = false;
@@ -860,6 +785,9 @@ function goToFile(index) {
     // rebuild it than diff which row changed.
     const newSidebar = buildSidebar();
     layout.replaceChild(newSidebar, layout.querySelector('.sidebar'));
+    // Scroll the selected row into view within the sidebar list.
+    const cur = newSidebar.querySelector('.sfile.current');
+    if (cur) cur.scrollIntoView({ block: 'nearest' });
   };
   if (oldDetail) {
     oldDetail.classList.add('slide-out');
@@ -1164,6 +1092,8 @@ function tally() {
   }
   const statsEl = document.querySelector('.stats');
   if (statsEl) { statsEl.replaceWith(buildStats()); }
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) renderFileList(sidebar);
 }
 
 function showApplyConfirm() {
