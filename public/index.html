@@ -70,13 +70,18 @@
     background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; }
   .confirm-overlay.hidden { display: none; }
   .confirm-modal { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-    box-shadow: var(--menu-shadow); padding: 28px 28px 22px; width: 380px; max-width: calc(100vw - 32px); }
+    box-shadow: var(--menu-shadow); padding: 28px; width: 480px; max-width: calc(100vw - 32px); }
   .confirm-modal h2 { margin: 0 0 18px; font-size: 17px; font-weight: 600; }
-  .confirm-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
+  .confirm-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 22px; }
   .cs-tile { background: var(--card2); border: 1px solid var(--line); border-radius: 10px;
-    padding: 12px 14px; text-align: center; }
+    padding: 12px 6px; text-align: center; min-width: 0; box-sizing: border-box; }
   .cs-tile .cs-num { font-size: 22px; font-weight: 700; line-height: 1.1; }
-  .cs-tile .cs-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+  .cs-tile .cs-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 480px) {
+    .confirm-modal { padding: 20px 16px 18px; }
+    .confirm-summary { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  }
   .cs-tile.cs-files .cs-num { color: var(--blue-fg); }
   .cs-tile.cs-accepted .cs-num { color: var(--add-fg); }
   .cs-tile.cs-partial .cs-num { color: var(--warn-fg); }
@@ -103,6 +108,8 @@
     border-radius: 7px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
   .mode-seg .mode-seg-btn.active { background: var(--card); color: var(--ink); font-weight: 600;
     box-shadow: 0 1px 3px rgba(0,0,0,.10), 0 0 0 1px var(--line); }
+  [data-theme="dark"] .mode-seg .mode-seg-btn.active { background: #323D4D; color: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0,0,0,.35), 0 0 0 1px #48566A; }
   .mode-seg .mode-seg-btn:hover:not(.active) { color: var(--ink); }
   #main { transition: opacity .15s ease; }
   #main.mode-loading { opacity: 0.4; pointer-events: none; }
