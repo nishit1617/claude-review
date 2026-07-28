@@ -706,7 +706,7 @@ function buildSidebar() {
   head.innerHTML = '<div class="sf-title">Files (<span class="sfile-count"></span>)</div>'
     + '<div class="sf-tools">'
     + '<div class="sf-search"><span class="sf-search-icon">' + ICON_SEARCH + '</span>'
-    + '<input type="text" placeholder="Search files..." aria-label="Search files">'
+    + '<input type="text" placeholder="Search files... (Ctrl+K)" aria-label="Search files">'
     + '<button class="sf-clear" aria-label="Clear search" title="Clear search" hidden>' + ICON_X + '</button></div>'
     + '<div class="filter-dd">'
     + '<button class="filter-dd-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter files" title="Filter files">' + ICON_FUNNEL + '</button>'
@@ -1192,7 +1192,13 @@ document.getElementById('submit').onclick = showApplyConfirm;
 document.getElementById('confirmOk').onclick = submit;
 document.getElementById('confirmCancel').onclick = () => document.getElementById('confirmOverlay').classList.add('hidden');
 document.getElementById('confirmOverlay').onclick = (e) => { if (e.target === e.currentTarget) document.getElementById('confirmOverlay').classList.add('hidden'); };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.getElementById('confirmOverlay').classList.add('hidden'); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.getElementById('confirmOverlay').classList.add('hidden');
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    const search = document.querySelector('.sf-search input');
+    if (search) { e.preventDefault(); search.focus(); search.select(); }
+  }
+});
 load();
 </script>
 </body>
