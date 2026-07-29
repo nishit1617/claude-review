@@ -2,13 +2,13 @@
 
 ## What this is
 
-A Claude Code plugin that adds post-edit diff review to Claude Code sessions, in the style of Cursor or Windsurf's inline review, but delivered as a browser page rather than an editor extension. After Claude finishes making changes, a review page opens automatically showing exactly what changed, organized file by file, with per-hunk and per-line accept/reject control. Anything rejected is reverted via git. Anything you type as a reason for rejecting something is delivered back to Claude automatically the next time you send a message, so it can course-correct without you having to re-explain yourself.
+A Claude Code plugin that adds post-edit diff review to Claude Code sessions, in the style of Cursor or Windsurf's inline review, but delivered as a browser page rather than an editor extension. After Claude finishes making changes, a review page opens automatically showing exactly what changed, organized file by file, with per-hunk and per-line keep/restore control. Anything restored is reverted via git. Anything you type as a reason for restoring something is delivered back to Claude automatically the next time you send a message, so it can course-correct without you having to re-explain yourself.
 
 Repo: github.com/nishit1617/claude-review — v1.0.3
 
 ## Why this exists
 
-Claude Code has no native mechanism for reviewing a batch of edits after the fact, only accepting or rejecting changes one at a time as they happen, or trusting everything and checking git diff manually afterward. This plugin sits in that gap: it snapshots the state of the repo when a session starts, lets Claude work normally and freely, then on request builds a full diff against that snapshot and gives you a structured way to review it, accept most of it, reject specific pieces, and tell Claude why.
+Claude Code has no native mechanism for reviewing a batch of edits after the fact, only keeping or restoring changes one at a time as they happen, or trusting everything and checking git diff manually afterward. This plugin sits in that gap: it snapshots the state of the repo when a session starts, lets Claude work normally and freely, then on request builds a full diff against that snapshot and gives you a structured way to review it, keep most of it, restore specific pieces, and tell Claude why.
 
 ## Core concepts
 
@@ -18,11 +18,11 @@ Claude Code has no native mechanism for reviewing a batch of edits after the fac
 
 **Master-detail review UI.** The browser page shows a file sidebar on the left and one file's full diff on the right at a time, not every file stacked on one long page. Files can be opened in any order via the sidebar, not just sequentially.
 
-**Viewed is separate from Accept/Reject.** Each file has its own Accept/Reject controls (also available per-hunk when a file has more than one separate block of change) plus a distinct "Viewed" checkbox. Viewed is pure bookkeeping — checking it doesn't accept or reject anything, it just tracks that you've looked at that file and advances you to the next file that hasn't been viewed yet, wrapping around the file list if needed. Unchecking it un-marks the file without navigating anywhere. Reviewing everything to Apply doesn't require every file to be marked viewed — anything untouched is kept (accepted) by default when you apply.
+**Viewed is separate from Keep/Restore.** Each file has its own Keep/Restore controls (also available per-hunk when a file has more than one separate block of change) plus a distinct "Viewed" checkbox. Viewed is pure bookkeeping — checking it doesn't keep or restore anything, it just tracks that you've looked at that file and advances you to the next file that hasn't been viewed yet, wrapping around the file list if needed. Unchecking it un-marks the file without navigating anywhere. Reviewing everything to Apply doesn't require every file to be marked viewed — anything untouched is kept by default when you apply.
 
 **Line numbers and human-readable hunk ranges.** Each diff line shows both its old and new line number in the file. Hunk boundaries are shown as "Lines N to M" rather than raw unified-diff @@ syntax.
 
-**Feedback loop.** Rejecting something with a typed reason writes that reason, along with which file and which lines, to .claude-review/feedback.md. The next time you send Claude a message, a UserPromptSubmit hook reads that file, prints its contents (which Claude Code adds to Claude's context for that turn), and deletes the file so it's delivered exactly once.
+**Feedback loop.** Restoring something with a typed reason writes that reason, along with which file and which lines, to .claude-review/feedback.md. The next time you send Claude a message, a UserPromptSubmit hook reads that file, prints its contents (which Claude Code adds to Claude's context for that turn), and deletes the file so it's delivered exactly once.
 
 **Smart auto-open.** The review page opens in your browser automatically once Claude finishes. A genuinely first-ever launch for a project (no prior server has ever run there) opens instantly. If a server previously ran for that project recently, there's a short grace period before opening, specifically to avoid a duplicate tab appearing if an existing tab from the previous server session is about to reconnect.
 
