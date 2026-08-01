@@ -1,5 +1,6 @@
 {
   "name": "claude-review-marketplace",
+  "description": "Marketplace for the claude-review plugin — batch diff review for Claude Code with per-hunk keep/restore and feedback loop.",
   "owner": {
     "name": "Nishit"
   },
@@ -7,7 +8,7 @@
     {
       "name": "claude-review",
       "source": "./",
-      "description": "Batch diff review: Claude edits freely, then you accept or reject every change per hunk in a browser UI. Rejected hunks revert via git; your reasons feed back to Claude."
+      "description": "Batch diff review: Claude edits freely, then you keep or restore every change per hunk in a browser UI. Restored hunks revert via git; your reasons feed back to Claude."
     }
   ]
 }
