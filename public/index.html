@@ -106,14 +106,37 @@
     }
 
     .project-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       font-size: 12px;
-      color: var(--muted);
-      font-family: var(--mono);
+      font-weight: 500;
+      font-family: var(--sans);
+      color: var(--ink);
+      background: var(--card2);
       border: 1px solid var(--line);
       border-radius: 999px;
-      padding: 2px 10px;
+      padding: 3px 10px;
       white-space: nowrap;
+      vertical-align: middle;
+      line-height: 1;
+      height: 24px;
+      box-sizing: border-box;
+      transition: border-color .15s ease;
     }
+
+    .project-tag:hover {
+      border-color: var(--muted);
+    }
+
+    .project-tag svg {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+
+
+
 
     header .spacer {
       flex: 1;
@@ -1308,7 +1331,7 @@
       font-size: 13px;
     }
 
-    .galaxy-wrap {
+    .completion-wrap {
       position: relative;
       overflow: hidden;
       display: flex;
@@ -1319,41 +1342,42 @@
       border-radius: 12px;
     }
 
-    .galaxy-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      cursor: crosshair;
-    }
-
-    .galaxy-overlay-minimal {
-      position: relative;
-      z-index: 2;
+    .completion-overlay {
       text-align: center;
-      pointer-events: none;
-      animation: galaxyFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: completionFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    @keyframes galaxyFadeUp {
+    @keyframes completionFadeIn {
       0% {
         opacity: 0;
-        transform: translateY(12px) scale(0.97);
+        transform: scale(0.96);
       }
 
       100% {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: scale(1);
       }
     }
 
-    .galaxy-title-minimal {
+    .completion-title-floating {
       margin: 0;
       font-size: 24px;
       font-weight: 600;
       color: var(--ink);
       letter-spacing: -0.01em;
+      animation: floatBreathing 3.5s ease-in-out infinite;
+    }
+
+    @keyframes floatBreathing {
+
+      0%,
+      100% {
+        transform: translateY(0px);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
     }
 
     @keyframes skelShimmer {
@@ -1549,7 +1573,12 @@
 <body>
   <header>
     <h1>Claude Review<span class="ver">v__CR_VERSION__</span></h1>
-    <span class="project-tag" title="__CR_PROJECT__">__CR_PROJECT__</span>
+    <span class="project-tag" title="__CR_PROJECT__">
+      <svg class="project-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>__CR_PROJECT__</span>
+    </span>
     <span class="spacer"></span>
     <button id="theme" title="Switch light / dark" aria-label="Switch light / dark"></button>
     <div class="mode-seg" role="group" aria-label="Review mode" data-active-mode="per-request">
@@ -2052,165 +2081,11 @@
     }
 
     function buildCompletionView() {
-      const detail = el('div', 'detail galaxy-wrap');
-      const canvas = el('canvas', 'galaxy-canvas');
-      detail.appendChild(canvas);
-
-      const overlay = el('div', 'galaxy-overlay-minimal');
-      overlay.innerHTML = '<h2 class="galaxy-title-minimal">You made it to the end!</h2>';
+      const detail = el('div', 'detail completion-wrap');
+      const overlay = el('div', 'completion-overlay');
+      overlay.innerHTML = '<h2 class="completion-title-floating">You made it to the end!</h2>';
       detail.appendChild(overlay);
-
-      setTimeout(() => initGalaxyCanvas(canvas), 0);
       return detail;
-    }
-
-    function initGalaxyCanvas(canvas) {
-      const ctx = canvas.getContext('2d');
-      let width, height;
-      function resize() {
-        width = canvas.width = canvas.parentElement?.clientWidth || 600;
-        height = canvas.height = canvas.parentElement?.clientHeight || 480;
-      }
-      resize();
-      window.addEventListener('resize', resize, { passive: true });
-
-      const nodeCount = Math.min(Math.max((model && model.files ? model.files.length * 4 : 28), 28), 50);
-
-      const particles = [];
-      for (let i = 0; i < nodeCount; i++) {
-        particles.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.7,
-          vy: (Math.random() - 0.5) * 0.7,
-          radius: Math.random() * 2.5 + 1.5,
-          type: i % 4,
-          pulse: Math.random() * Math.PI * 2
-        });
-      }
-
-      let mouse = { x: -1000, y: -1000, active: false };
-      let shockwaves = [];
-      let auroraTime = 0;
-
-      canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        mouse.x = e.clientX - rect.left;
-        mouse.y = e.clientY - rect.top;
-        mouse.active = true;
-      });
-
-      canvas.addEventListener('mouseleave', () => { mouse.active = false; });
-
-      canvas.addEventListener('click', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        shockwaves.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, r: 0, alpha: 1 });
-      });
-
-      function getCssVar(name, fallback) {
-        const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-        return val || fallback;
-      }
-
-      function step() {
-        if (!document.body.contains(canvas)) return;
-        ctx.clearRect(0, 0, width, height);
-
-        const isDark = document.documentElement.dataset.theme === 'dark';
-
-        const addFg = getCssVar('--add-fg', isDark ? '#4ADE80' : '#15803D');
-        const delFg = getCssVar('--del-fg', isDark ? '#F87171' : '#B91C1C');
-        const ink = getCssVar('--ink', isDark ? '#FAFAFA' : '#09090B');
-        const muted = getCssVar('--muted', isDark ? '#A1A1AA' : '#71717A');
-
-        const systemColors = [addFg, ink, muted, delFg];
-
-        // 1. Shifting Aurora Nebula background glow using system colors
-        auroraTime += 0.008;
-        const gx = width / 2 + Math.cos(auroraTime) * 90;
-        const gy = height / 2 + Math.sin(auroraTime * 0.7) * 70;
-        const grad = ctx.createRadialGradient(gx, gy, 20, width / 2, height / 2, width * 0.65);
-        grad.addColorStop(0, isDark ? 'rgba(74, 222, 128, 0.10)' : 'rgba(21, 128, 61, 0.08)');
-        grad.addColorStop(0.5, isDark ? 'rgba(161, 161, 170, 0.06)' : 'rgba(113, 113, 122, 0.05)');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
-
-        // 2. Draw Particles using System Token colors
-        for (let i = 0; i < particles.length; i++) {
-          const p = particles[i];
-          p.x += p.vx;
-          p.y += p.vy;
-          p.pulse += 0.03;
-
-          if (p.x < 0 || p.x > width) p.vx *= -1;
-          if (p.y < 0 || p.y > height) p.vy *= -1;
-
-          if (mouse.active) {
-            const dx = mouse.x - p.x;
-            const dy = mouse.y - p.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 140) {
-              p.x += (dx / dist) * 0.9;
-              p.y += (dy / dist) * 0.9;
-            }
-          }
-
-          const r = p.radius + Math.sin(p.pulse) * 0.6;
-          const color = systemColors[p.type];
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          if (isDark) {
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = color;
-          }
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-
-        // 3. Draw Constellation lines using system muted color
-        for (let i = 0; i < particles.length; i++) {
-          for (let j = i + 1; j < particles.length; j++) {
-            const p1 = particles[i];
-            const p2 = particles[j];
-            const dx = p1.x - p2.x;
-            const dy = p1.y - p2.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < 110) {
-              ctx.beginPath();
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-              const alpha = (1 - dist / 110) * 0.3;
-              ctx.strokeStyle = isDark
-                ? `rgba(161, 161, 170, ${alpha})`
-                : `rgba(113, 113, 122, ${alpha})`;
-              ctx.lineWidth = 1;
-              ctx.stroke();
-            }
-          }
-        }
-
-        // 4. Draw Click Shockwave Rings using system add-fg
-        for (let i = shockwaves.length - 1; i >= 0; i--) {
-          const sw = shockwaves[i];
-          sw.r += 4.5;
-          sw.alpha -= 0.025;
-          if (sw.alpha <= 0) { shockwaves.splice(i, 1); continue; }
-          ctx.beginPath();
-          ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI * 2);
-          ctx.strokeStyle = addFg;
-          ctx.globalAlpha = sw.alpha;
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.globalAlpha = 1;
-        }
-
-        requestAnimationFrame(step);
-      }
-
-      requestAnimationFrame(step);
     }
 
     function renderAll() {
