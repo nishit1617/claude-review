@@ -1004,22 +1004,87 @@
       gap: 6px;
     }
 
+    @keyframes crPulseKeep {
+      0% {
+        outline: 2px solid var(--add-fg);
+        outline-offset: -2px;
+        background-color: var(--add-bg) !important;
+      }
+      50% {
+        outline: 2px solid var(--add-fg);
+        outline-offset: -2px;
+        background-color: var(--add-bg) !important;
+      }
+      100% {
+        outline: 2px solid transparent;
+        outline-offset: -2px;
+      }
+    }
+
+    @keyframes crPulseRestore {
+      0% {
+        outline: 2px solid var(--del-fg);
+        outline-offset: -2px;
+        background-color: var(--del-bg) !important;
+      }
+      50% {
+        outline: 2px solid var(--del-fg);
+        outline-offset: -2px;
+        background-color: var(--del-bg) !important;
+      }
+      100% {
+        outline: 2px solid transparent;
+        outline-offset: -2px;
+      }
+    }
+
+    @keyframes crPulseDefault {
+      0% {
+        outline: 2px solid var(--ink);
+        outline-offset: -2px;
+      }
+      100% {
+        outline: 2px solid transparent;
+        outline-offset: -2px;
+      }
+    }
+
+    @keyframes crBtnPulseKeep {
+      0% { transform: scale(0.95); border-color: var(--add-fg); color: var(--add-fg); }
+      50% { transform: scale(1.05); border-color: var(--add-fg); color: var(--add-fg); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes crBtnPulseRestore {
+      0% { transform: scale(0.95); border-color: var(--del-fg); color: var(--del-fg); }
+      50% { transform: scale(1.05); border-color: var(--del-fg); color: var(--del-fg); }
+      100% { transform: scale(1); }
+    }
+
+    button.pulse-btn-keep {
+      animation: crBtnPulseKeep 0.4s ease-out;
+    }
+
+    button.pulse-btn-restore {
+      animation: crBtnPulseRestore 0.4s ease-out;
+    }
+
     .hunk {
+      position: relative;
       border-bottom: 1px solid var(--line);
     }
 
-    @keyframes crPulse {
-      0% {
-        box-shadow: inset 0 0 0 2px var(--muted);
-      }
-
-      100% {
-        box-shadow: inset 0 0 0 0px transparent;
-      }
+    .hunk.pulse pre,
+    .hunk.pulse-default pre {
+      animation: crPulseDefault .55s ease-out;
     }
 
-    .hunk.pulse {
-      animation: crPulse .5s ease-out;
+    .hunk.pulse-keep pre {
+      animation: crPulseKeep .55s ease-out;
+    }
+
+    .hunk.pulse-restore pre {
+      animation: crPulseRestore .55s ease-out;
     }
 
     .hunk:last-child {
@@ -1802,9 +1867,74 @@
       } catch (_) { }
     }
 
+    function saveState() {
+      const keys = [];
+      if (currentSig) keys.push('cr-state-' + currentSig);
+      keys.push('cr-state-latest');
+      try {
+        const rejObj = {};
+        for (const hId in lineRej) {
+          if (lineRej[hId] && lineRej[hId].size > 0) {
+            rejObj[hId] = [...lineRej[hId]];
+          }
+        }
+        const payload = JSON.stringify({
+          lineRej: rejObj,
+          reasons,
+          reasonConfirmed
+        });
+        for (const key of keys) {
+          sessionStorage.setItem(key, payload);
+          localStorage.setItem(key, payload);
+        }
+      } catch (_) { }
+    }
+
+    function loadState() {
+      try {
+        const key = currentSig ? ('cr-state-' + currentSig) : 'cr-state-latest';
+        const stored = sessionStorage.getItem(key) || localStorage.getItem(key) || sessionStorage.getItem('cr-state-latest') || localStorage.getItem('cr-state-latest');
+        if (stored) {
+          const { lineRej: rejObj, reasons: savedReasons, reasonConfirmed: savedConfirmed } = JSON.parse(stored);
+          if (rejObj) {
+            for (const hId in rejObj) {
+              if (Array.isArray(rejObj[hId])) {
+                lineRej[hId] = new Set(rejObj[hId]);
+              }
+            }
+          }
+          if (savedReasons) {
+            for (const hId in savedReasons) {
+              reasons[hId] = savedReasons[hId];
+            }
+          }
+          if (savedConfirmed) {
+            for (const hId in savedConfirmed) {
+              reasonConfirmed[hId] = savedConfirmed[hId];
+            }
+          }
+        }
+      } catch (_) { }
+    }
+
+    function clearState() {
+      try {
+        if (currentSig) {
+          sessionStorage.removeItem('cr-state-' + currentSig);
+          localStorage.removeItem('cr-state-' + currentSig);
+        }
+        sessionStorage.removeItem('cr-state-latest');
+        localStorage.removeItem('cr-state-latest');
+      } catch (_) { }
+    }
+
     window.addEventListener('storage', (e) => {
       if (currentSig && e.key === 'cr-viewed-' + currentSig) {
         loadViewedFiles();
+        renderAll();
+      }
+      if (currentSig && e.key === 'cr-state-' + currentSig) {
+        loadState();
         renderAll();
       }
     });
@@ -1813,7 +1943,10 @@
       if (!sig || sig === 'none') return;
       const changed = currentSig !== sig;
       currentSig = sig;
-      if (changed) loadViewedFiles();
+      if (changed) {
+        loadViewedFiles();
+        loadState();
+      }
     }
 
     async function startPolling() {
@@ -1888,6 +2021,7 @@
         lineRej[h.id] = new Set();
         changedIdx[h.id] = h.lines.map((l, i) => [l, i]).filter(([l]) => l[0] === '+' || l[0] === '-').map(([, i]) => i);
       }
+      loadState();
       if (currentFileIndex >= model.files.length) currentFileIndex = 0;
       renderAll();
     }
@@ -2023,21 +2157,18 @@
     }
 
     async function load() {
-      startPolling();
-      const [res] = await Promise.all([
-        fetch('/api/review'),
+      const [firstSig, res] = await Promise.all([
+        fetch('/api/sig').then(r => r.json()).catch(() => null),
+        fetch('/api/review').then(r => r.json()).catch(() => null),
         loadMode()
       ]);
-      model = await res.json();
-      if (model.sig) setSig(model.sig);
+      if (firstSig && firstSig.sig) setSig(firstSig.sig);
+      model = res;
       const main = document.getElementById('main');
-      if (model.error) { main.innerHTML = '<div class="empty">' + esc(model.error) + '</div>'; return; }
-      if (!model.files.length) { main.innerHTML = '<div class="empty">No changes to review.</div>'; return; }
-      for (const f of model.files) for (const h of f.hunks) {
-        lineRej[h.id] = new Set();
-        changedIdx[h.id] = h.lines.map((l, i) => [l, i]).filter(([l]) => l[0] === '+' || l[0] === '-').map(([, i]) => i);
-      }
-      renderAll();
+      if (!model || model.error) { if (main) main.innerHTML = '<div class="empty">' + esc(model?.error || 'No changes to review.') + '</div>'; startPolling(); return; }
+      if (!model.files.length) { if (main) main.innerHTML = '<div class="empty">No changes to review.</div>'; startPolling(); return; }
+      applyReview(model);
+      startPolling();
     }
 
     function splitPath(filePath) {
@@ -2333,8 +2464,8 @@
         + '<span class="fileacts"><button class="btn-keep" data-f="acc">' + ICON_BOOKMARK_SM + 'Keep</button>'
         + '<button class="btn-restore" data-f="rej">' + ICON_RESTORE_SM + 'Restore</button>'
         + '<label class="viewed-toggle"><input type="checkbox" data-f="viewed"' + (viewedFiles.has(f.filePath) ? ' checked' : '') + '> Viewed</label></span>';
-      dstats.querySelector('[data-f="acc"]').onclick = () => { for (const h of f.hunks) setHunk(h, false); };
-      dstats.querySelector('[data-f="rej"]').onclick = () => { for (const h of f.hunks) setHunk(h, true); };
+      dstats.querySelector('[data-f="acc"]').onclick = (e) => { pulseBtn(e.currentTarget, 'keep'); for (const h of f.hunks) setHunk(h, false); };
+      dstats.querySelector('[data-f="rej"]').onclick = (e) => { pulseBtn(e.currentTarget, 'restore'); for (const h of f.hunks) setHunk(h, true); };
       dstats.querySelector('[data-f="viewed"]').onchange = (e) => {
         if (e.target.checked) markViewed(f);
         else { viewedFiles.delete(f.filePath); showingCompletion = false; saveViewedFiles(); renderAll(); } // unchecking is a correction — stay put, don't navigate away
@@ -2359,8 +2490,8 @@
             : '');
         bar.querySelector('.hunk-toggle').onclick = () => toggleHunkCollapse(h);
         if (showHunkActs) {
-          bar.querySelector('[data-a="acc"]').onclick = () => setHunk(h, false);
-          bar.querySelector('[data-a="rej"]').onclick = () => setHunk(h, true);
+          bar.querySelector('[data-a="acc"]').onclick = (e) => { pulseBtn(e.currentTarget, 'keep'); setHunk(h, false); };
+          bar.querySelector('[data-a="rej"]').onclick = (e) => { pulseBtn(e.currentTarget, 'restore'); setHunk(h, true); };
         }
         hunkEl.appendChild(bar);
 
@@ -2396,14 +2527,14 @@
             const before = rejSnapshot(h);
             segIdx.forEach(x => lineRej[h.id].delete(x));
             paintHunk(h); tally();
-            if (rejSnapshot(h) === before) pulseHunk(h);
+            if (rejSnapshot(h) === before) pulseHunk(h, 'keep');
           };
           rev.onclick = (e) => {
             e.stopPropagation();
             const before = rejSnapshot(h);
             segIdx.forEach(x => lineRej[h.id].add(x));
             paintHunk(h); tally();
-            if (rejSnapshot(h) === before) pulseHunk(h);
+            if (rejSnapshot(h) === before) pulseHunk(h, 'restore');
           };
           segbar.appendChild(keep); segbar.appendChild(rev);
           seg.appendChild(segbar);
@@ -2462,7 +2593,7 @@
       const before = rejSnapshot(h);
       lineRej[h.id] = restoreAll ? new Set(changedIdx[h.id]) : new Set();
       paintHunk(h); tally();
-      if (rejSnapshot(h) === before) pulseHunk(h);
+      if (rejSnapshot(h) === before) pulseHunk(h, restoreAll ? 'restore' : 'keep');
     }
 
     function toggleHunkCollapse(h) {
@@ -2476,13 +2607,22 @@
     // (e.g. clicking Keep on something already kept by default) —
     // a genuine transition already has its own color-change feedback, so
     // pulsing on top of that reads as unnecessary jerk, not confirmation.
-    function pulseHunk(h) {
+    function pulseHunk(h, type) {
       const el = document.getElementById(h.id);
       if (!el) return;
-      el.classList.remove('pulse');
+      el.classList.remove('pulse', 'pulse-keep', 'pulse-restore', 'pulse-default');
       void el.offsetWidth; // force reflow so back-to-back no-op clicks each re-trigger the animation
-      el.classList.add('pulse');
-      setTimeout(() => el.classList.remove('pulse'), 500);
+      const cls = type === 'keep' ? 'pulse-keep' : type === 'restore' ? 'pulse-restore' : 'pulse-default';
+      el.classList.add(cls);
+      setTimeout(() => el.classList.remove('pulse', 'pulse-keep', 'pulse-restore', 'pulse-default'), 600);
+    }
+
+    function pulseBtn(btn, type) {
+      if (!btn) return;
+      btn.classList.remove('pulse-btn-keep', 'pulse-btn-restore');
+      void btn.offsetWidth;
+      btn.classList.add(type === 'restore' ? 'pulse-btn-restore' : 'pulse-btn-keep');
+      setTimeout(() => btn.classList.remove('pulse-btn-keep', 'pulse-btn-restore'), 450);
     }
 
     function copyFilePath(filePath, btn) {
@@ -2527,10 +2667,10 @@
         txt.title = reasons[h.id];
         const editBtn = document.createElement('button');
         editBtn.innerHTML = ICON_EDIT_SM + 'Edit';
-        editBtn.onclick = () => { reasonConfirmed[h.id] = false; renderReasonBox(h, reasonDiv); };
+        editBtn.onclick = () => { reasonConfirmed[h.id] = false; saveState(); renderReasonBox(h, reasonDiv); };
         const delBtn = document.createElement('button');
         delBtn.innerHTML = ICON_TRASH_SM + 'Delete';
-        delBtn.onclick = () => { reasons[h.id] = ''; reasonConfirmed[h.id] = false; renderReasonBox(h, reasonDiv); };
+        delBtn.onclick = () => { reasons[h.id] = ''; reasonConfirmed[h.id] = false; saveState(); renderReasonBox(h, reasonDiv); };
         view.appendChild(txt); view.appendChild(editBtn); view.appendChild(delBtn);
         reasonDiv.appendChild(view);
       } else {
@@ -2550,12 +2690,14 @@
         const confirm = () => {
           if (!inp.value.trim()) { inp.blur(); return; }
           reasonConfirmed[h.id] = true;
+          saveState();
           renderReasonBox(h, reasonDiv);
         };
 
         inp.oninput = () => {
           reasons[h.id] = inp.value;
           submitBtn.disabled = !inp.value.trim();
+          saveState();
         };
         inp.onkeydown = (e) => {
           if (e.key !== 'Enter') return;
@@ -2608,6 +2750,7 @@
         if (s === changedIdx[id].length && s > 0) rej++;
         else if (s > 0) partial++;
       }
+      saveState();
       const statsEl = document.querySelector('.stats');
       if (statsEl) { statsEl.replaceWith(buildStats()); }
       const sidebar = document.querySelector('.sidebar');
@@ -2662,6 +2805,7 @@
         body: JSON.stringify({ selections, reasons })
       });
       const out = await res.json();
+      clearState();
       const fails = (out.results || []).filter(r => !r.ok);
       btn.textContent = 'Applied ✓';
       document.getElementById('keepAll').style.display = 'none';
@@ -2702,8 +2846,8 @@
     function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
     function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-    document.getElementById('keepAll').onclick = () => { for (const f of model.files) for (const h of f.hunks) setHunk(h, false); };
-    document.getElementById('restoreAll').onclick = () => { for (const f of model.files) for (const h of f.hunks) setHunk(h, true); };
+    document.getElementById('keepAll').onclick = (e) => { pulseBtn(e.currentTarget, 'keep'); for (const f of model.files) for (const h of f.hunks) setHunk(h, false); };
+    document.getElementById('restoreAll').onclick = (e) => { pulseBtn(e.currentTarget, 'restore'); for (const f of model.files) for (const h of f.hunks) setHunk(h, true); };
     document.getElementById('submit').onclick = showApplyConfirm;
     document.getElementById('confirmOk').onclick = submit;
     document.getElementById('confirmCancel').onclick = () => document.getElementById('confirmOverlay').classList.add('hidden');
